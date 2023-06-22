@@ -3,6 +3,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+plt.ion()
 from matplotlib import cm
 import interpolation_fourier as interpF
 
@@ -109,5 +110,3 @@ plt.ylabel('y [ m ]')
 plt.xlim(-250, 250)
 plt.ylim(-250, 250)
 plt.gca().set_aspect('equal')
-
-plt.show()

@@ -10,11 +10,13 @@ import signal_interpolation_fourier as sigF
 
 import demo_helper
 
+"""
+For using the interpolator, the x and y positions of the simulated antennas in the shower plane are needed,
+along with the time traces for all these antennas and polarizations
+Shapes are 1D array for x, y (in meters)
+antenna traces in shape (Nant, Nsamples, Npol), i.e., in this example (208+250, 4082, 2)
+"""
 
-# For using the interpolator, the x and y positions of the simulated antennas in the shower plane are needed,
-# along with the time traces for all these antennas and polarizations
-# Shapes are 1D array for x, y (in meters)
-# antenna traces in shape (Nant, Nsamples, Npol), i.e., in this example (208+250, 4082, 2)
 demo_filename = 'demo_shower.h5'
 (zenith, azimuth, xmax, footprint_pos_x, footprint_pos_y, test_pos_x, test_pos_y, footprint_antenna_data, test_antenna_data) = demo_helper.read_data_hdf5(demo_filename)
 

@@ -7,8 +7,14 @@ import scipy.interpolate as intp
 class interp2d_fourier:
     @classmethod
     def get_ordering_indices(self, x, y):
-        # Produces ordering indices to create (radius, phi) 2D-array from x and y (1D-)arrays.
-        # Input: positions x and y as 1-D arrays
+        """ Produces ordering indices to create (radius, phi) 2D-array from unordered x and y (1D-)arrays.
+
+        Parameters
+        ----------
+        x : 1D array of x positions
+        y : 1D array of y positions
+        """
+
         radius = np.sqrt(x**2 + y**2)
         phi = np.arctan2(y, x) # uses interval -pi..pi
         phi = np.deg2rad(np.around(np.rad2deg(phi)))
@@ -34,8 +40,10 @@ class interp2d_fourier:
 
     @classmethod
     def cos_sin_components(cls, fourier):
-        # Convert complex FFT as from np.fft.rfft to real-valued cos, sin components
-        # Input: complex Fourier components, with Fourier series running along the last axis.
+        """
+        Convert complex FFT as from np.fft.rfft to real-valued cos, sin components
+        Input: complex Fourier components, with Fourier series running along the last axis.
+        """
         cos_components = 2*np.real(fourier)
         cos_components[..., 0] *= 0.5
         cos_components[..., -1] *= 0.5
@@ -44,13 +52,18 @@ class interp2d_fourier:
         return (cos_components, sin_components)
 
     def __init__(self, x, y, values, radial_method='cubic', fill_value=None, recover_concentric_rings=False):
+        """
         # Produce a callable instance (given by the function __call__) to interpolate a function value(x, y) sampled at the input positions (x, y)
-        # Input: positions x, y as 1D-arrays, values as 1-D array
-        # radial_method: the interp1d method (keyword 'kind'), default='cubic' for cubic splines
-        # fill_value: the fill value to use for a radius outside the min..max radius interval from the input. Set to 'extrapolate' to extrapolate beyond radial limits; accuracy outside the interval is limited
-        # Default fill_value is None, meaning stay constant for r < r_min, and 0 for r > r_max
-        # recover_concentric_rings: default False, set True if the grid is not purely circular-symmetric; results may not be accurate
 
+        Parameters
+        ----------
+        x : 1D array of x positions of simulated antennas
+        y : idem for y
+        values : the function values (as 1D array) at positions (x, y)
+        radial_method : the interp1d method for interpolating Fourier components along the radial axis (optional, default 'cubic' i.e. cubic splines)
+        fill_value : the fill value to pass to interp1d to use for a radius outside the min..max radius interval from the input. Set to 'extrapolate' to extrapolate beyond radial limits; accuracy outside the interval is limited. Optional, default None, meaning stay constant for r < r_min, and 0 for r > r_max
+        recover_concentric_rings : set True if the grid is not purely circular-symmetric; results may not be accurate. Optional, default False
+        """
         # Convert (x, y) to (r, phi), make 2d position array, sorting positions and values by r and phi
         radius = np.sqrt(x**2 + y**2)
 
@@ -83,10 +96,15 @@ class interp2d_fourier:
 
 
     def __call__(self, x, y, max_fourier_mode=None):
-        # Interpolate the input used in __init__ for input positions (x, y)
-        # Input: positions x, y as float or N-D array
-        # max_fourier_mode: optional cutoff, do Fourier sum up to (incl.) this mode
+        """
+        Interpolate the input used in __init__ for input positions (x, y)
 
+        Parameters
+        ----------
+        x : x positions as float or numpy ND array
+        y : idem for y
+        max_fourier_mode : optional cutoff for spatial frequencies along circles, i.e. do Fourier sum up to (incl.) this mode. Default None i.e. do all modes
+        """
         radius = np.sqrt(x**2 + y**2)
         phi = np.arctan2(y, x) - self._phi0
 
