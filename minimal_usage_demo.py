@@ -10,17 +10,17 @@ import signal_interpolation_Fourier as sigF
 
 import demo_helper
 
-# For using the interpolator, the x and y positions of the simulated antennas in the shower plane are needed,
-# along with the time traces for all these antennas and polarizations
-# The antennas need not be ordered by position
+""" For using the interpolator, the x and y positions of the simulated antennas in the shower plane are needed,
+along with the time traces for all these antennas and polarizations
+The antennas need not be ordered by position
 
-# Shapes are 1D array for x, y (in meters)
-# antenna traces 'footprint_antenna_data' in shape (Nant, Nsamples, Npol), i.e., in this example (208, 4082, 2)
-# Additional antenna positions have been simulated ('test_antenna_data' and 'test_pos_x', 'test_pos_y') to test the interpolation accuracy
+Shapes are 1D array for x, y (in meters)
+antenna traces 'footprint_antenna_data' in shape (Nant, Nsamples, Npol), i.e., in this example (208, 4082, 2)
+Additional antenna positions have been simulated ('test_antenna_data' and 'test_pos_x', 'test_pos_y') to test the interpolation accuracy
 
-# When within < ~10 degrees from the North-South axis (including zenith), rotate the `on-sky` polarizations by 45 degrees
-# to avoid alignment with vx(vxB) and therefore having near-zero signals along circles in the footprint
-
+When within < ~10 degrees from the North-South axis (including zenith), rotate the `on-sky` polarizations by 45 degrees
+to avoid alignment with vx(vxB) and therefore having near-zero signals along circles in the footprint
+"""
 # Read in demo data
 demo_filename = 'demo_shower.h5'
 (zenith, azimuth, xmax, footprint_pos_x, footprint_pos_y, test_pos_x, test_pos_y, footprint_antenna_data, test_antenna_data) = demo_helper.read_data_hdf5(demo_filename)
