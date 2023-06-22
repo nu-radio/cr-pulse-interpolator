@@ -21,9 +21,10 @@ Runnable demo scripts are:
 The full signal interpolation demos require example data files to be downloaded:  
 run **download_demo_data.sh** before using the demo scripts.
 
-The example data files contain E-field traces from a CoREAS shower, converted to two "on-sky" polarizations.  
+The example data files contain E-field traces from a CoREAS shower, converted to two "on-sky" polarizations.
+They can be given as input in any order when creating the interpolator object.
 This is the recommended usage in the interpolator.  
-NB. the two polarizations should _not_ be aligned to vxB and vx(vxB), as the near-zero amplitudes along circles in the footprint lead to poor accuracy.  
+NB. in the full pulse interpolator, the two polarizations should _not_ be aligned to vxB and vx(vxB), as the near-zero amplitudes along circles in the footprint lead to poor accuracy. In the interpolation for amplitude or fluence only, this is not an issue.
 It is recommended to rotate the polarizations by 45 degrees when this happens (e.g. zenith showers, or close to north-south axis in general), and rotate back after interpolating.
 
 Another recommendation is to test the accuracy of interpolation by simulating some 10 or 20 additional antennas placed at strategic positions 'in between' the radial-grid positions.
