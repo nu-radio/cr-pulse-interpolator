@@ -7,14 +7,21 @@ import matplotlib.pyplot as plt
 from scipy import signal as scipy_signal
 
 def get_freq_axis(signal):
-    # Return the frequency axis of a (real) FFT spectrum
-    # Frequencies in MHz (hence the 1.0e-6), assumed a 0.1 ns sample period
+    """
+    Return the frequency axis of a (real) FFT spectrum of time series 'signal' as 1D array
+    Frequencies in MHz (hence the 1.0e-6), assumed a 0.1 ns sample period
+    """
     return (1.0e-6 * np.fft.rfftfreq(signal.shape[0], d=0.1e-9)) # MHz
 
 def do_filter_signal_lowpass(signal, cutoff_freq):
-    # For one antenna, signal shape (Nsamples)
-    # cutoff_freq in MHz
+    """
+    For one signal time series, do lowpass filtering.
 
+    Parameters
+    ----------
+    signal : time series, 1D array
+    cutoff_freq : high frequency cutoff in MHz
+    """
     freqs = get_freq_axis(signal)
 
     filter_indices = np.where(freqs > cutoff_freq)
@@ -25,6 +32,18 @@ def do_filter_signal_lowpass(signal, cutoff_freq):
     return signal_filtered
 
 def get_crosscorrelation(test_signal, orig_signal, upsampling_factor=10):
+    """
+    Get normalized cross-correlation between 'test_signal' and 'orig_signal', returned as 'CC_zeroshift'.
+    Also returns: normalized cross-correlation optimized over time shift between the two signals;
+    time difference for which the cross-correlation is maximal;
+    relative energy difference
+
+    Parameters
+    ----------
+    test_signal : time series, 1D array
+    orig_signal : idem
+    upsampling_factor : upsampling factor for sub-sample timing accuracy, used to obtain optimal cross-correlation (optimized over arrival times). Default 10.
+    """
 
     orig_signal_upsampled = scipy_signal.resample(orig_signal, upsampling_factor*len(orig_signal) )
     test_signal_upsampled = scipy_signal.resample(test_signal, upsampling_factor*len(test_signal) )
@@ -58,10 +77,18 @@ def get_crosscorrelation(test_signal, orig_signal, upsampling_factor=10):
 
 
 def plot_pulse_and_spectrum(orig_pulse, interpolated_pulse, x, y, cutoff_freq, pol):
-    # input pulses as 1D traces, i.e. shape (Nsamples)
-    # and position x, y in the footprint (in shower plane)
-    # x, y, cutoff freq, pol just for writing on the plot
+    """
+    Plots an interpolated pulse together with a 'true' simulated pulse
 
+    Parameters
+    ----------
+    orig_pulse : time series, 1D array
+    interpolated_pulse : idem
+    x : the x position (float), for annotation in the plot
+    y : idem for y
+    cutoff_freq : value of estimated cutoff frequency, for annotation only
+    pol : polarization number
+    """
     time_axis = 0.1 * np.arange(len(orig_pulse))
     radius = np.sqrt(x**2 + y**2)
     freqs = get_freq_axis(orig_pulse)
@@ -106,6 +133,9 @@ def plot_pulse_and_spectrum(orig_pulse, interpolated_pulse, x, y, cutoff_freq, p
 
 
 def read_data_hdf5(filename):
+    """
+    Reading in the demo data hdf5 file.
+    """
     try:
         demo_file = h5py.File(filename, 'r')
     except:

@@ -470,13 +470,20 @@ class interp2d_signal:
     # end __init__
 
     def __call__(self, x, y, lowfreq=30.0, highfreq=500.0, filter_up_to_cutoff=False, account_for_timing=True, const_time_offset=20.0e-9, full_output=False):
+        """
+        Call the object, which computes the interpolation at arbitrary position (x, y)
 
-        # Call the object, which computes the interpolation at arbitrary position (x, y)
-        # Here, x and y should be given as a single value each
-        # filter_up_to_cutoff can be set to filter the output signals to the local estimated cutoff frequency
-        # account_for_timing is usually True, in which case const_time_offset is not used
-        # full_output can be set to output time series and spectra, otherwise only the time series are returned
-
+        Parameters
+        ----------
+        x : the x position in m (float, single value)
+        y : idem for y
+        lowfreq : low-frequency limit for bandpass filtering of interpolated pulse, default 30.0 MHz
+        highfreq : high-frequency limit, idem, default 500.0 MHz
+        filter_up_to_cutoff : set to True for low-pass filtering up to local estimated cutoff frequency, default False
+        account_for_timing : set to False to have each pulse at a fixed time given by 'const_time_offset' instead of its natural arrival time. Default True
+        const_time_offset : constant time offset if not using interpolated arrival times. Default 20e-9 (seconds).
+        full_output : set to True to output both time series and spectra. Default False, returns only time series.
+        """
         if (self.nofcalls == 0) and self.verbose:
             print('Method: %s' % self.method)
         self.nofcalls += 1
@@ -499,8 +506,9 @@ class interp2d_signal:
             print('pos x = %3.2f, y = %3.2f: nearest antenna at x = %3.2f, y = %3.2f m' % (x, y, self.pos_x[index_nearest], self.pos_y[index_nearest]))
 
             phasespectrum = np.copy(self.phasespectrum_corrected[index_nearest]) # COPY !!!
-
-            # Do nearest-neighbor interpolation on remaining ('corrected') phases, which should be near zero, but do full interpolation on amplitude spectrum
+            """
+            Do nearest-neighbor interpolation on remaining ('corrected') phases, which should be near zero, but do full interpolation on amplitude spectrum
+            """
             for freq_channel in range(Nfreqs):
                 for pol in range(Npols): # todo: reduce
                     thisPower = self.interpolators_abs_spectrum[pol, freq_channel](x, y)
@@ -551,8 +559,9 @@ class interp2d_signal:
 
         # Wrap into (-pi, pi) where needed, to tidy up
         phasespectrum = self.phase_wrap(phasespectrum)
-
-        # Set frequency channels with negative abs-amplitude to 0. This can arise sometimes when Fourier-interpolating abs-amplitudes around a circle. Throw warning when this is needed.
+        """
+        Set frequency channels with negative abs-amplitude to 0. This can arise sometimes when Fourier-interpolating abs-amplitudes around a circle. Throw warning when this is needed.
+        """
         indices_negative = np.where(abs_spectrum < 0)
         nof_negative = len(indices_negative[0])
         nof_negative_pol0 = len(np.where(indices_negative[1]==0)[0])
@@ -560,8 +569,9 @@ class interp2d_signal:
         if (nof_negative > 0):
             print('warning: negative values in abs_spectrum found: %d times. Setting to zero.' % nof_negative)
             abs_spectrum[indices_negative] = 0.0
-
-        # Filter to bandwidth up to local cutoff frequency if desired, otherwise up to high frequency limit
+        """
+        Filter to bandwidth up to local cutoff frequency if desired, otherwise up to high frequency limit
+        """
         for pol in range(Npols):
             high_cutoff = self.interpolators_cutoff_freq[pol](x, y) if filter_up_to_cutoff else highfreq
 

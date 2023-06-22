@@ -61,8 +61,10 @@ for index in test_indices:
 
     demo_helper.plot_pulse_and_spectrum(orig_pulse, interpolated_pulse, this_x, this_y, this_cutoff_freq, pol)
 
-# Evaluate cross-correlation between true and interpolated pulses
-# for all 250 test positions, and for each of the 2 `on-sky' polarizations
+"""
+Evaluate cross-correlation between true and interpolated pulses
+for all 250 test positions, and for each of the 2 `on-sky' polarizations
+"""
 CC_values = np.zeros( (nof_test_positions, 2) )
 distances = np.zeros(nof_test_positions)
 for index in range(nof_test_positions):

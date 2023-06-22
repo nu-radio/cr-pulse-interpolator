@@ -38,10 +38,12 @@ print('Interpolating pulse at position x = %3.2f, y = %3.2f m' % (this_x, this_y
 
 orig_pulse = test_antenna_data[test_index] # shape is (Nsamples, Npol)
 
-# Call the interpolator object to obtain the interpolated pulse at the desired position
-# Return shape is (Nsamples, Npol)
-# Optionally, it can be low-pass filtered to an estimated reliable cutoff frequency
-# This is a reliable yet sometimes overly conservative estimate up to which frequency the interpolation is accurate
+"""
+Call the interpolator object to obtain the interpolated pulse at the desired position
+Return shape is (Nsamples, Npol)
+Optionally, it can be low-pass filtered to an estimated reliable cutoff frequency
+This is a reliable yet sometimes overly conservative estimate up to which frequency the interpolation is accurate
+"""
 interpolated_pulse = signal_interpolator(this_x, this_y) #, filter_up_to_cutoff=True)
 
 # Make a plot of the trace and spectrum
