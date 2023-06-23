@@ -135,6 +135,7 @@ def plot_pulse_and_spectrum(orig_pulse, interpolated_pulse, x, y, cutoff_freq, p
 def read_data_hdf5(filename):
     """
     Reading in the demo data hdf5 file.
+    The time traces inside are CoREAS E-fields, converted to 2 'on-sky' polarizations.
     """
     try:
         demo_file = h5py.File(filename, 'r')

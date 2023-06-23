@@ -10,19 +10,22 @@ import interpolation_fourier as interpF
 
 class interp2d_signal:
 
-    def get_spectra(self, signals, verbose=False):
+    def get_spectra(self, signals):
         """
         # Do FFT of 'signals', assumed shape (Nants, Nsamples, Npol) i.e. the time traces are along the second axis.
         # Produce absolute-amplitude spectrum and phase spectrum
+        Parameters
+        ----------
+        signals : the input time traces
         """
         Nsamples = signals.shape[1]
 
-        if verbose: print('Doing FFTs...', end=' ')
+        if self.verbose: print('Doing FFTs...', end=' ')
         all_antennas_spectrum = np.fft.rfft(signals, axis=1)
         abs_spectrum = np.abs(all_antennas_spectrum)
         phasespectrum = np.angle(all_antennas_spectrum)
         unwrapped_phases = np.unwrap(phasespectrum, axis=1, discont=0.7*np.pi)
-        if verbose: print('done.')
+        if self.verbose: print('done.')
 
         #antnr = 1555
         #print(pos_sim_UVW[antnr])
@@ -31,7 +34,7 @@ class interp2d_signal:
 
         freqstep = freqs[1] - freqs[0]
         nof_freq_channels = len(np.where( (freqs < 500) )[0])
-        if verbose: print('Frequency channel width %2.4f MHz, there are %d channels between 0 and 500 MHz' % (freqstep, nof_freq_channels))
+        if self.verbose: print('Frequency channel width %2.4f MHz, there are %d channels between 0 and 500 MHz' % (freqstep, nof_freq_channels))
 
         return (freqs, all_antennas_spectrum, abs_spectrum, phasespectrum, unwrapped_phases)
 
@@ -208,7 +211,7 @@ class interp2d_signal:
 
         return const_phases_unwrapped
 
-    def get_coherency_vs_frequency(self, bandwidth=50.0, low_freq=30.0, high_freq=500.0, coherency_cutoff=0.8, verbose=False):
+    def get_coherency_vs_frequency(self, bandwidth=50.0, low_freq=30.0, high_freq=500.0, coherency_cutoff=0.8):
         """
         Compute `degree of coherency` as from Eq. (2.4) in a sliding frequency window
         each with bandwidth 50 MHz (or optional value given)
@@ -222,7 +225,6 @@ class interp2d_signal:
         low_freq : low frequency cutoff in MHz, default 30.0
         high_freq : high frequency cutoff in MHz, default 500.0
         coherency_cutoff : threshold value for coherency level, default 0.8
-        verbose : print information
         """
         freq_indices = np.where( (self.freqs > low_freq) & (self.freqs < (high_freq)))[0] # high_freq - bandwidth?
 
@@ -232,7 +234,7 @@ class interp2d_signal:
         cutoff_freq = np.zeros( (Nants, Npols) )
 
         for i, freq_index in enumerate(freq_indices):
-            if verbose: print('%d / %d' % (i, len(freq_indices)))
+            if self.verbose: print('%d / %d' % (i, len(freq_indices)))
             this_freq = self.freqs[freq_index]
             coherency = self.degree_of_coherency(low_freq=this_freq, high_freq=this_freq+bandwidth)
             coherency_vs_freq[:, i, :] = coherency
@@ -253,7 +255,6 @@ class interp2d_signal:
 
     def get_freq_dependent_timing_correction(self, lowfreq=30.0, highfreq=500.0, bandwidth=50.0, upsample_factor=10, ignore_cutoff_freq_in_timing=False):
         """
-
         Implements "method (2)" to account for phase spectra towards higher frequencies.
         Determines arrival time (E-field maximum) in a 50 MHz (or 'bandwidth') sliding frequency window, by filtering to each frequency window and inverse-FFT.
         Arrival time is mapped to phase in the center of each window.
@@ -376,6 +377,7 @@ class interp2d_signal:
         upsample_factor : upsampling factor used for sub-sample timing accuracy. Default 5.
         coherency_cutoff_threshold : the value of Eq. (2.4) that defines the reliable high-frequency limit on each position. Used internally in the "timing" method, also available to the user via self.get_cutoff_freq(x, y, pol) above. Default 0.9.
         ignore_cutoff_freq_in_timing : can be set to True when experimenting with the "timing" method without its stopping criterion, default False.
+        verbose : print info while initializing
         """
         self.nofcalls = 0
         self.verbose = verbose
@@ -431,7 +433,6 @@ class interp2d_signal:
         nof_freq_channels = len(np.where( (self.freqs < 500) )[0]) # remove hardcoded number
 
         self.interpolators_abs_spectrum = np.empty( (Npols, nof_freq_channels), dtype=object)# [ [None]*nof_freq_channels ] * Npols
-        #self.interpolators_phase = np.empty( (Npols, nof_freq_channels), dtype=object)#
 
         """
         Create interpolators for the "phasors" for each frequency,
@@ -454,7 +455,6 @@ class interp2d_signal:
         for freq_channel in range(nof_freq_channels):
             for pol in range(Npols):
                 self.interpolators_abs_spectrum[pol, freq_channel] = interpF.interp2d_fourier(x, y, self.abs_spectrum[:, freq_channel, pol])
-                #self.interpolators_phase[pol, freq_channel] = interpF.interp2d_fourier(x, y, self.phasespectrum_corrected[:, freq_channel, pol])
                 self.interpolators_freq_dependent_timing[pol, freq_channel] = interpF.interp2d_fourier(x, y, self.freq_dependent_timing[:, freq_channel, pol])
 
                 self.interpolators_cosphi[pol, freq_channel] = interpF.interp2d_fourier(x, y, np.cos(self.phasespectrum_corrected[:, freq_channel, pol]) )
@@ -466,7 +466,7 @@ class interp2d_signal:
             self.interpolators_constphase[pol] = interpF.interp2d_fourier(x, y, self.const_phases[:, pol])
             self.interpolators_cutoff_freq[pol] = interpF.interp2d_fourier(x, y, self.cutoff_freq[:, pol])
 
-        if verbose: print('Done.')
+        if self.verbose: print('Done.')
     # end __init__
 
     def __call__(self, x, y, lowfreq=30.0, highfreq=500.0, filter_up_to_cutoff=False, account_for_timing=True, const_time_offset=20.0e-9, full_output=False):
