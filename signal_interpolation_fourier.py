@@ -20,12 +20,14 @@ class interp2d_signal:
         """
         Nsamples = signals.shape[1]
 
-        if self.verbose: print('Doing FFTs...', end=' ')
+        if self.verbose:
+            print('Doing FFTs...', end=' ')
         all_antennas_spectrum = np.fft.rfft(signals, axis=1)
         abs_spectrum = np.abs(all_antennas_spectrum)
         phasespectrum = np.angle(all_antennas_spectrum)
         unwrapped_phases = np.unwrap(phasespectrum, axis=1, discont=0.7*np.pi)
-        if self.verbose: print('done.')
+        if self.verbose:
+            print('done.')
 
         #antnr = 1555
         #print(pos_sim_UVW[antnr])
@@ -34,7 +36,8 @@ class interp2d_signal:
 
         freqstep = freqs[1] - freqs[0]
         nof_freq_channels = len(np.where( (freqs < 500) )[0])
-        if self.verbose: print('Frequency channel width %2.4f MHz, there are %d channels between 0 and 500 MHz' % (freqstep, nof_freq_channels))
+        if self.verbose:
+            print('Frequency channel width %2.4f MHz, there are %d channels between 0 and 500 MHz' % (freqstep, nof_freq_channels))
 
         return (freqs, all_antennas_spectrum, abs_spectrum, phasespectrum, unwrapped_phases)
 
@@ -56,7 +59,8 @@ class interp2d_signal:
         """
         (Nant, Nsamples, Npols) = signals.shape
 
-        if self.verbose: print('Bandpass filtering %d to %d MHz' % (int(lowfreq), int(highfreq)))
+        if self.verbose:
+            print('Bandpass filtering %d to %d MHz' % (int(lowfreq), int(highfreq)))
         spectrum = np.fft.rfft(signals, axis=1)
         freqs = np.fft.rfftfreq(Nsamples, d=0.1e-9)
         freqs /= 1.0e6 # in MHz
@@ -68,17 +72,20 @@ class interp2d_signal:
         # Get strongest polarization
         power_per_pol = np.sum(np.sum(filtered_signals**2, axis=1), axis=0)
         strongest_pol = np.argmax(power_per_pol)
-        if self.verbose: print('Strongest polarization is %d' % strongest_pol)
+        if self.verbose:
+            print('Strongest polarization is %d' % strongest_pol)
 
         timestep = 0.1e-9 # s
-        if self.verbose: print('Upsampling by a factor %d' % upsample_factor)
+        if self.verbose:
+            print('Upsampling by a factor %d' % upsample_factor)
         signals_upsampled = resample(filtered_signals, upsample_factor*Nsamples, axis=1)
 
         nof_samples = signals_upsampled.shape[1]
         signals_upsampled = np.roll(signals_upsampled, nof_samples//2, axis=1) # Put in the middle of the block, avoiding negative values in timing
 
         if do_hilbert_envelope:
-            if self.verbose: print('Hilbert envelope')
+            if self.verbose:
+                print('Hilbert envelope')
             hilbert_envelope = np.abs(hilbert(signals_upsampled, axis=1))
 
             if sum_over_pol:
@@ -92,7 +99,8 @@ class interp2d_signal:
             pulse_timings_per_pol = (np.argmax(signals_upsampled, axis=1) - nof_samples//2) * (timestep/upsample_factor)
 
         #pulse_timings = np.argmax(hilbert_envelope[:, :, 1], axis=1) * (timestep/upsample_factor)
-        if self.verbose: print('Timings done')
+        if self.verbose:
+            print('Timings done')
 
         if do_hilbert_envelope and sum_over_pol:
             pulse_timings_per_pol = np.zeros( (Nant, Npols) )
@@ -234,7 +242,8 @@ class interp2d_signal:
         cutoff_freq = np.zeros( (Nants, Npols) )
 
         for i, freq_index in enumerate(freq_indices):
-            if self.verbose: print('%d / %d' % (i, len(freq_indices)))
+            if self.verbose:
+                print('%d / %d' % (i, len(freq_indices)))
             this_freq = self.freqs[freq_index]
             coherency = self.degree_of_coherency(low_freq=this_freq, high_freq=this_freq+bandwidth)
             coherency_vs_freq[:, i, :] = coherency
@@ -291,7 +300,8 @@ class interp2d_signal:
                 if ((band_high - band_low) < bandwidth) and (band_low + bandwidth < band_high):
                     band_high = band_low + bandwidth
                 # check bandwidth
-                if self.verbose: print('Bandwidth %3.1f MHz, from %3.1f to %3.1f MHz' % (band_high-band_low, band_low, band_high))
+                if self.verbose:
+                    print('Bandwidth %3.1f MHz, from %3.1f to %3.1f MHz' % (band_high-band_low, band_low, band_high))
 
                 this_timing = self.hilbert_envelope_timing(signals, lowfreq=band_low, highfreq=band_high, upsample_factor=upsample_factor, do_hilbert_envelope=False)
                 # returns timings for (Nant, Npol)
@@ -390,7 +400,8 @@ class interp2d_signal:
         # Get the abs-amplitude and phase spectra from the time traces
         (self.freqs, all_antennas_spectrum, self.abs_spectrum, self.phasespectrum, self.unwrapped_phases) = self.get_spectra(signals)
 
-        if self.verbose: print('Doing timings using hilbert envelope...')
+        if self.verbose:
+            print('Doing timings using hilbert envelope...')
 
         # Get pulse timings using Hilbert envelope
         self.pulse_timings = self.hilbert_envelope_timing(signals, lowfreq=30.0, highfreq=80.0, upsample_factor=upsample_factor)
@@ -406,7 +417,8 @@ class interp2d_signal:
         self.phasespectrum_corrected_before_freq_dependent = np.copy(self.phasespectrum_corrected) # for testing / demo purposes
 
         # Get degree of coherency and reliable high-cutoff frequency
-        if self.verbose: print('Getting coherency and freq cutoff')
+        if self.verbose:
+            print('Getting coherency and freq cutoff')
         (self.coherency_vs_freq, self.cutoff_freq) = self.get_coherency_vs_frequency(coherency_cutoff=coherency_cutoff_threshold)
         if self.method == "timing":
             if verbose: print('Doing freq dependent timing...')
@@ -466,7 +478,8 @@ class interp2d_signal:
             self.interpolators_constphase[pol] = interpF.interp2d_fourier(x, y, self.const_phases[:, pol])
             self.interpolators_cutoff_freq[pol] = interpF.interp2d_fourier(x, y, self.cutoff_freq[:, pol])
 
-        if self.verbose: print('Done.')
+        if self.verbose:
+            print('Done.')
     # end __init__
 
     def __call__(self, x, y, lowfreq=30.0, highfreq=500.0, filter_up_to_cutoff=False, account_for_timing=True, const_time_offset=20.0e-9, full_output=False):
