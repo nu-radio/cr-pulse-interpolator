@@ -2,7 +2,7 @@
 Full electric-field waveform interpolation for air shower simulations
 
 For elaborate information on the methods and their performance, see  
-Corstanje et al. (2023), arXiv xxxx.xxxxx, doi xx.xxxx,  
+Corstanje et al. (2023), arXiv **2306.13514**  
 Please cite this when using code and/or method in your analysis, publication etc.
 
 ## Contents
@@ -13,13 +13,15 @@ The package contains two interpolation modules:
 
 ## Usage 
 The interpolation modules have an interface very similar to e.g. Scipy's **interp1d** class.  
+They require numpy and scipy.
 Runnable demo scripts are:
 - **demo_interpolation_fourier.py**: a demo of the interpolation_fourier method, plotting a radio energy footprint heatmap.
 - **demo_signal_interpolation.py**: demonstrates full signal interpolation, doing cross-correlations with true simulated signals on "random" test positions.
 - **minimal_usage_demo.py**: a smaller demo of full signal interpolation, aimed at getting the user started quickly.
 
 The full signal interpolation demos require example data files to be downloaded:  
-run **download_demo_data.sh** before using the demo scripts.
+run **download_demo_data.sh** before using the demo scripts.  
+The h5py package is required to read the demo data.
 
 The example data files contain E-field traces from a CoREAS shower, converted to two "on-sky" polarizations.
 They can be given as input in any order when creating the interpolator object.
