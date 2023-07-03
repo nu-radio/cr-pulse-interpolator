@@ -5,7 +5,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
 
-import interpolation_Fourier
 import signal_interpolation_fourier as sigF
 
 import demo_helper
@@ -25,8 +24,10 @@ to avoid alignment with vx(vxB) and therefore having near-zero signals along cir
 demo_filename = 'demo_shower.h5'
 (zenith, azimuth, xmax, footprint_pos_x, footprint_pos_y, test_pos_x, test_pos_y, footprint_antenna_data, test_antenna_data) = demo_helper.read_data_hdf5(demo_filename)
 
-# Initialize the interpolator object. It needs the antenna positions (x and y as 1D arrays) and their time traces as 3D arrays (Nants, Nsamples, Npols)
-# By default the phase-interpolating method is "phasor" (see article)
+"""
+Initialize the interpolator object. It needs the antenna positions (x and y as 1D arrays) and their time traces as 3D arrays (Nants, Nsamples, Npols)
+By default the phase-interpolating method is "phasor" (see article)
+"""
 print('Initializing interpolator object...')
 phase_method = "phasor" # other option is "timing" which takes longer to initialize (to check which performs better in use cases not yet tested)
 signal_interpolator = sigF.interp2d_signal(footprint_pos_x, footprint_pos_y, footprint_antenna_data, verbose=False, phase_method=phase_method)
