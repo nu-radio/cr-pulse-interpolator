@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
 
-import interpolation_Fourier
+import interpolation_fourier
 import signal_interpolation_fourier as sigF
 
 import demo_helper
