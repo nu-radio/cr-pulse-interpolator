@@ -31,7 +31,7 @@ class interp2d_signal:
 
         #antnr = 1555
         #print(pos_sim_UVW[antnr])
-        freqs = np.fft.rfftfreq(Nsamples, d=0.1e-9)
+        freqs = np.fft.rfftfreq(Nsamples, d=self.sampling_period)
         freqs /= 1.0e6 # in MHz
 
         freqstep = freqs[1] - freqs[0]
@@ -62,7 +62,7 @@ class interp2d_signal:
         if self.verbose:
             print('Bandpass filtering %d to %d MHz' % (int(lowfreq), int(highfreq)))
         spectrum = np.fft.rfft(signals, axis=1)
-        freqs = np.fft.rfftfreq(Nsamples, d=0.1e-9)
+        freqs = np.fft.rfftfreq(Nsamples, d=self.sampling_period)
         freqs /= 1.0e6 # in MHz
         filtering_out = np.where( (freqs < lowfreq) | (freqs > highfreq)) # or!
 
@@ -75,7 +75,7 @@ class interp2d_signal:
         if self.verbose:
             print('Strongest polarization is %d' % strongest_pol)
 
-        timestep = 0.1e-9 # s
+        timestep = self.sampling_period # in s
         if self.verbose:
             print('Upsampling by a factor %d' % upsample_factor)
         signals_upsampled = resample(filtered_signals, upsample_factor*Nsamples, axis=1)
@@ -371,7 +371,7 @@ class interp2d_signal:
         return self.interpolators_cutoff_freq[pol](x, y)
 
 
-    def __init__(self, x, y, signals, lowfreq=30.0, highfreq=500.0, phase_method="phasor", radial_method='cubic', upsample_factor=5, coherency_cutoff_threshold=0.9, ignore_cutoff_freq_in_timing=False, verbose=False):
+    def __init__(self, x, y, signals, lowfreq=30.0, highfreq=500.0, sampling_period=0.1e-9, phase_method="phasor", radial_method='cubic', upsample_factor=5, coherency_cutoff_threshold=0.9, ignore_cutoff_freq_in_timing=False, verbose=False):
         """
         Initialize a callable signal interpolator object
 
@@ -382,6 +382,7 @@ class interp2d_signal:
         signals : 3D array of shape (Nant, Nsamples, Npols) with the antennas indexed in the first axis, the time traces in the second axis, and the polarizations in the third.
         lowfreq: low-frequency limit, typically set to 30 MHz. If a higher low-frequency limit is desired, it may likely be better to keep it at 30 MHz here, and high-pass filter later.
         highfreq : high-frequency limit, default 500.0 MHz, adjustable to e.g. 80 MHz.
+        sampling_period : the time between samples in the data, default 0.1e-9 seconds (0.1 ns)
         phase_method : the options for the phase interpolation are "phasor" and "timing", cf. pg 8 in the article ("Method (1)" vs "Method (2)"), default "phasor" (Method (1))
         radial_method : the interp1d method used for radially interpolating Fourier coefficients. Usually set to 'cubic' for cubic splines, in interpolation_fourier.
         upsample_factor : upsampling factor used for sub-sample timing accuracy. Default 5.
@@ -396,7 +397,8 @@ class interp2d_signal:
         self.pos_y = y
         (Nants, Nsamples, Npols) = signals.shape # hard assumption, 3D...
         self.trace_length = Nsamples
-
+        self.sampling_period = sampling_period
+        if self.verbose: print('Setting sampling period to %1.1e seconds' % self.sampling_period)
         # Get the abs-amplitude and phase spectra from the time traces
         (self.freqs, all_antennas_spectrum, self.abs_spectrum, self.phasespectrum, self.unwrapped_phases) = self.get_spectra(signals)
 
@@ -504,7 +506,7 @@ class interp2d_signal:
         Nfreqs = len(self.interpolators_abs_spectrum[0])
         Npols = len(self.interpolators_abs_spectrum)
 
-        freqs = np.fft.rfftfreq(self.trace_length, d=0.1e-9)
+        freqs = np.fft.rfftfreq(self.trace_length, d=self.sampling_period)
         freqs /= 1.0e6 # in MHz
         ## Make self.freqs (todo)
 
