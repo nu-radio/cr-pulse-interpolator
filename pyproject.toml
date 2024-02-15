@@ -2,7 +2,7 @@
 name = "cr_pulse_interpolator"
 version = "1.0.0"
 authors = [
-  { name="Arthur Corstanje", email="arthur.corstanje@vub.be" },
+  { name="Arthur Corstanje", email="a.corstanje@astro.ru.nl" },
 ]
 description = "Full waveform interpolation for air shower simulations"
 readme = "README.md"
