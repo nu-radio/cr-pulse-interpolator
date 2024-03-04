@@ -13,7 +13,7 @@ The package contains two interpolation modules:
 
 ## Usage 
 The interpolation modules have an interface very similar to e.g. Scipy's **interp1d** class.  
-They require numpy and scipy.
+They require numpy and scipy. The demo scripts further require h5py and matplotlib.  
 Runnable demo scripts are:
 - **demo_interpolation_fourier.py**: a demo of the interpolation_fourier method, plotting a radio energy footprint heatmap.
 - **demo_signal_interpolation.py**: demonstrates full signal interpolation, doing cross-correlations with true simulated signals on "random" test positions.

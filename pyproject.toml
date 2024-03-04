@@ -17,6 +17,12 @@ dependencies = [
   'scipy >= 1.8',
 ]
 
+[project.optional-dependencies]
+demo = [
+  "h5py",
+  "matplotlib",
+]
+
 [project.urls]
 Homepage = "https://github.com/nu-radio/cr-pulse-interpolator"
 Issues = "https://github.com/nu-radio/cr-pulse-interpolator/issues"
