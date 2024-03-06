@@ -1,0 +1,32 @@
+[project]
+name = "cr_pulse_interpolator"
+version = "1.0.0"
+authors = [
+  { name="Arthur Corstanje", email="a.corstanje@astro.ru.nl" },
+]
+description = "Full waveform interpolation for air shower simulations"
+readme = "README.md"
+requires-python = ">=3.6"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+  'numpy >= 1.20',
+  'scipy >= 1.8',
+]
+
+[project.optional-dependencies]
+demo = [
+  "h5py",
+  "matplotlib",
+]
+
+[project.urls]
+Homepage = "https://github.com/nu-radio/cr-pulse-interpolator"
+Issues = "https://github.com/nu-radio/cr-pulse-interpolator/issues"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"

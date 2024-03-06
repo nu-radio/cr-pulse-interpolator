@@ -6,14 +6,23 @@ Corstanje et al. (2023), arXiv **2306.13514**
 Please cite this when using code and/or method in your analysis, publication etc.
 
 ## Contents
-The package contains two interpolation modules:
-- **interpolation_Fourier.py**: interpolates a 2D scalar function f(x, y) defined on a radial (polar) grid.
+The package contains two interpolation submodules:
+- **interpolation_fourier**: interpolates a 2D scalar function f(x, y) defined on a radial (polar) grid.
   This includes for instance air shower radio energy fluence or amplitude along a radio footprint in the shower plane.
-- **signal_interpolation_Fourier.py**: interpolates full time traces (waveforms) of electric-field signals simulated by air shower simulation codes such as CoREAS, in antennas placed on a radial grid.
+- **signal_interpolation_fourier**: interpolates full time traces (waveforms) of electric-field signals simulated by air shower simulation codes such as CoREAS, in antennas placed on a radial grid.
+
+## Installation and Dependencies
+This package can be installed with the following command:  
+```sh
+  pip install git+https://github.com/nu-radio/cr-pulse-interpolator
+```
+To automatically install the requirements for the demo scripts, one can instead use  
+```sh
+  pip install "cr_pulse_interpolator[demo] @ git+https://github.com/nu-radio/cr-pulse-interpolator"  
+```
 
 ## Usage 
 The interpolation modules have an interface very similar to e.g. Scipy's **interp1d** class.  
-They require numpy and scipy.
 Runnable demo scripts are:
 - **demo_interpolation_fourier.py**: a demo of the interpolation_fourier method, plotting a radio energy footprint heatmap.
 - **demo_signal_interpolation.py**: demonstrates full signal interpolation, doing cross-correlations with true simulated signals on "random" test positions.

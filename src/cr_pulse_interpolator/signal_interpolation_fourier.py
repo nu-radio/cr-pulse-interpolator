@@ -6,7 +6,7 @@
 
 import numpy as np
 from scipy.signal import hilbert, resample
-import interpolation_fourier as interpF
+import cr_pulse_interpolator.interpolation_fourier as interpF
 
 class interp2d_signal:
 
