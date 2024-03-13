@@ -1,7 +1,7 @@
 # Module for Fourier interpolation of pulsed signals along simulated radio footprints of cosmic-ray air showers
 # Author: A. Corstanje (a.corstanje@astro.ru.nl), 2023
 #
-# See article: arXiv:xxxx.xxxxx, doi xxx
+# See article: A. Corstanje et al 2023 JINST 18 P09005, doi 10.1088/1748-0221/18/09/P09005, arXiv 2306.13514, 
 # Please cite this when using code and/or methods in your analysis
 
 import numpy as np
@@ -29,15 +29,8 @@ class interp2d_signal:
         if self.verbose:
             print('done.')
 
-        #antnr = 1555
-        #print(pos_sim_UVW[antnr])
         freqs = np.fft.rfftfreq(Nsamples, d=self.sampling_period)
         freqs /= 1.0e6 # in MHz
-
-        freqstep = freqs[1] - freqs[0]
-        nof_freq_channels = len(np.where( (freqs < 500) )[0])
-        if self.verbose:
-            print('Frequency channel width %2.4f MHz, there are %d channels between 0 and 500 MHz' % (freqstep, nof_freq_channels))
 
         return (freqs, all_antennas_spectrum, abs_spectrum, phasespectrum, unwrapped_phases)
 
@@ -421,11 +414,11 @@ class interp2d_signal:
         # Get degree of coherency and reliable high-cutoff frequency
         if self.verbose:
             print('Getting coherency and freq cutoff')
-        (self.coherency_vs_freq, self.cutoff_freq) = self.get_coherency_vs_frequency(coherency_cutoff=coherency_cutoff_threshold)
+        (self.coherency_vs_freq, self.cutoff_freq) = self.get_coherency_vs_frequency(low_freq=lowfreq, high_freq=highfreq, coherency_cutoff=coherency_cutoff_threshold)
         if self.method == "timing":
             if verbose: print('Doing freq dependent timing...')
             # Get arrival times in a sliding frequency window
-            self.freq_dependent_timing = self.get_freq_dependent_timing_correction(upsample_factor=upsample_factor, ignore_cutoff_freq_in_timing=ignore_cutoff_freq_in_timing)
+            self.freq_dependent_timing = self.get_freq_dependent_timing_correction(lowfreq=lowfreq, highfreq=highfreq, upsample_factor=upsample_factor, ignore_cutoff_freq_in_timing=ignore_cutoff_freq_in_timing)
             if verbose: print('Done freq dependent timing')
         else:
             # print('NOT doing freq dependent timing')
@@ -437,14 +430,14 @@ class interp2d_signal:
                 this_phase_corrections = 2*np.pi * (self.freqs*1.0e6) * self.freq_dependent_timing[ant, :, pol]
                 self.phasespectrum_corrected[ant, :, pol] = self.phasespectrum_corrected[ant, :, pol] + this_phase_corrections # this can be done more efficiently...
 
-        self.coherency = self.degree_of_coherency()
+        self.coherency = self.degree_of_coherency(low_freq=lowfreq, high_freq=highfreq)
 
         """
         Produce interpolators for amplitude and phase spectrum
         Do the Fourier interpolation for each frequency bin < 500 MHz, and for each polarization, separately
         Note: an order of magnitude speed improvement should be obtainable by vectorizing the Fourier interpolator
         """
-        nof_freq_channels = len(np.where( (self.freqs < 500) )[0]) # remove hardcoded number
+        nof_freq_channels = len(np.where( (self.freqs < highfreq) )[0])
 
         self.interpolators_abs_spectrum = np.empty( (Npols, nof_freq_channels), dtype=object)# [ [None]*nof_freq_channels ] * Npols
 
@@ -484,7 +477,7 @@ class interp2d_signal:
             print('Done.')
     # end __init__
 
-    def __call__(self, x, y, lowfreq=30.0, highfreq=500.0, filter_up_to_cutoff=False, account_for_timing=True, const_time_offset=20.0e-9, full_output=False):
+    def __call__(self, x, y, lowfreq=30.0, highfreq=500.0, filter_up_to_cutoff=False, account_for_timing=True, pulse_centered=False, const_time_offset=20.0e-9, full_output=False):
         """
         Call the object, which computes the interpolation at arbitrary position (x, y)
 
@@ -562,7 +555,12 @@ class interp2d_signal:
             const_phases[pol] = self.interpolators_constphase[pol](x, y)
 
             # Account for timing
-            if account_for_timing:
+            if pulse_centered:
+                # move pulse to the center of the trace
+                time_delta = self.trace_length * 0.5 * self.sampling_period
+                phase_shifts = -1.0e6*freqs * 2*np.pi * (timings[pol] + time_delta)
+                phasespectrum[:, pol] += phase_shifts
+            elif account_for_timing:
                 phase_shifts = -1.0e6*freqs * 2*np.pi * timings[pol]
                 phasespectrum[:, pol] += phase_shifts
             else:
