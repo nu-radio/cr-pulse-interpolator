@@ -364,7 +364,10 @@ class interp2d_signal:
         return self.interpolators_cutoff_freq[pol](x, y)
 
 
-    def __init__(self, x, y, signals, lowfreq=30.0, highfreq=500.0, sampling_period=0.1e-9, phase_method="phasor", radial_method='cubic', upsample_factor=5, coherency_cutoff_threshold=0.9, ignore_cutoff_freq_in_timing=False, verbose=False):
+    def __init__(self, x, y, signals, signals_start_times=None,
+                 lowfreq=30.0, highfreq=500.0, sampling_period=0.1e-9, phase_method="phasor",
+                 radial_method='cubic', upsample_factor=5, coherency_cutoff_threshold=0.9,
+                 ignore_cutoff_freq_in_timing=False, verbose=False):
         """
         Initialize a callable signal interpolator object
 
@@ -373,6 +376,8 @@ class interp2d_signal:
         x : 1D array for the simulated antenna positions (x) in m
         y : idem for y
         signals : 3D array of shape (Nant, Nsamples, Npols) with the antennas indexed in the first axis, the time traces in the second axis, and the polarizations in the third.
+        signals_start_times : np.ndarray, optional
+            The absolute start times of the input traces, shaped as (Nant,)
         lowfreq: low-frequency limit, typically set to 30 MHz. If a higher low-frequency limit is desired, it may likely be better to keep it at 30 MHz here, and high-pass filter later.
         highfreq : high-frequency limit, default 500.0 MHz, adjustable to e.g. 80 MHz.
         sampling_period : the time between samples in the data, default 0.1e-9 seconds (0.1 ns)
@@ -473,11 +478,19 @@ class interp2d_signal:
             self.interpolators_constphase[pol] = interpF.interp2d_fourier(x, y, self.const_phases[:, pol])
             self.interpolators_cutoff_freq[pol] = interpF.interp2d_fourier(x, y, self.cutoff_freq[:, pol])
 
+        if signals_start_times is not None:
+            self.interpolators_arrival_times = interpF.interp2d_fourier(x, y, signals_start_times)
+        else:
+            self.interpolators_arrival_times = None
+
         if self.verbose:
             print('Done.')
     # end __init__
 
-    def __call__(self, x, y, lowfreq=30.0, highfreq=500.0, filter_up_to_cutoff=False, account_for_timing=True, pulse_centered=False, const_time_offset=20.0e-9, full_output=False):
+    def __call__(self, x, y,
+                 lowfreq=30.0, highfreq=500.0, filter_up_to_cutoff=False,
+                 account_for_timing=True, account_for_arrival_times=False, pulse_centered=False,
+                 const_time_offset=20.0e-9, full_output=False):
         """
         Call the object, which computes the interpolation at arbitrary position (x, y)
 
@@ -489,9 +502,18 @@ class interp2d_signal:
         highfreq : high-frequency limit, idem, default 500.0 MHz
         filter_up_to_cutoff : set to True for low-pass filtering up to local estimated cutoff frequency, default False
         account_for_timing : set to False to have each pulse at a fixed time given by 'const_time_offset' instead of its natural arrival time. Default True
+        account_for_arrival_times : bool, default=False
+            If True, the pulses are not shifted according to their arrival times. Rather, the interpolated
+            arrival times are returned as an array. If the trace arrival times were provided during initialisation,
+            these are interpolated and accounted for as well. Note that this option is incompatible with
+            `account_for_timing` and `pulse_centered` .
         const_time_offset : constant time offset if not using interpolated arrival times. Default 20e-9 (seconds).
         full_output : set to True to output both time series and spectra. Default False, returns only time series.
         """
+        if account_for_timing + account_for_arrival_times + pulse_centered > 1:
+            raise ValueError(f'account_for_timing, account_for_arrival_times and pulse_centered are not compatible,'
+                             f'please select only one')
+
         if (self.nofcalls == 0) and self.verbose:
             print('Method: %s' % self.method)
         self.nofcalls += 1
@@ -563,6 +585,11 @@ class interp2d_signal:
             elif account_for_timing:
                 phase_shifts = -1.0e6*freqs * 2*np.pi * timings[pol]
                 phasespectrum[:, pol] += phase_shifts
+            elif account_for_arrival_times:
+                if self.interpolators_arrival_times is not None:
+                    timings[pol] += self.interpolators_arrival_times(x, y)
+                else:
+                    print('Trace arrival times were not set during init, only relative timings are returned!')
             else:
                 phase_shifts = -1.0e6*freqs * 2*np.pi * const_time_offset
                 phasespectrum[:, pol] += phase_shifts
@@ -597,6 +624,8 @@ class interp2d_signal:
         timeseries = np.fft.irfft(spectrum, axis=0)
 
         if full_output:
-            return (timeseries, abs_spectrum, phasespectrum)
+            return timeseries, abs_spectrum, phasespectrum, timings
+        elif account_for_arrival_times:
+            return timeseries, timings
         else:
             return timeseries
