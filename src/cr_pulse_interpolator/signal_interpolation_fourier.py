@@ -489,7 +489,7 @@ class interp2d_signal:
 
     def __call__(self, x, y,
                  lowfreq=30.0, highfreq=500.0, filter_up_to_cutoff=False,
-                 account_for_timing=True, account_for_arrival_times=False, pulse_centered=False,
+                 account_for_timing=True, return_arrival_times=False, pulse_centered=False,
                  const_time_offset=20.0e-9, full_output=False):
         """
         Call the object, which computes the interpolation at arbitrary position (x, y)
@@ -502,17 +502,12 @@ class interp2d_signal:
         highfreq : high-frequency limit, idem, default 500.0 MHz
         filter_up_to_cutoff : set to True for low-pass filtering up to local estimated cutoff frequency, default False
         account_for_timing : set to False to have each pulse at a fixed time given by 'const_time_offset' instead of its natural arrival time. Default True
-        account_for_arrival_times : bool, default=False
-            If True, the pulses are not shifted according to their arrival times. Rather, the interpolated
-            arrival times are returned as an array. If the trace arrival times were provided during initialisation,
-            these are interpolated and accounted for as well. Note that this option is incompatible with
-            `account_for_timing` and `pulse_centered` .
+        return_arrival_times : bool, default=False
+            If True, the interpolated trace start times are returned as an array. This requires the start times
+            of the input traces to be provided during initialisation.
         const_time_offset : constant time offset if not using interpolated arrival times. Default 20e-9 (seconds).
         full_output : set to True to output both time series and spectra. Default False, returns only time series.
         """
-        if account_for_timing + account_for_arrival_times + pulse_centered > 1:
-            raise ValueError(f'account_for_timing, account_for_arrival_times and pulse_centered are not compatible,'
-                             f'please select only one')
 
         if (self.nofcalls == 0) and self.verbose:
             print('Method: %s' % self.method)
@@ -525,11 +520,13 @@ class interp2d_signal:
         freqs /= 1.0e6 # in MHz
         ## Make self.freqs (todo)
 
-        # Set up reconstructed spectra, timings, phases at freq=0
+        # Set up reconstructed spectra, timings, start_times, phases at freq=0
         abs_spectrum = np.zeros( (self.trace_length//2+1, Npols) )
         phasespectrum = np.zeros( (self.trace_length//2+1, Npols) )
         timings = np.zeros(Npols)
+        start_time = np.zeros(Npols, dtype=float)
         const_phases = np.zeros(Npols)
+
 
         if self.method == 'timing':
             index_nearest = self.nearest_antenna_index(x, y)
@@ -580,16 +577,17 @@ class interp2d_signal:
             if pulse_centered:
                 # move pulse to the center of the trace
                 time_delta = self.trace_length * 0.5 * self.sampling_period
-                phase_shifts = -1.0e6*freqs * 2*np.pi * (timings[pol] + time_delta)
+                phase_shifts = -1.0e6*freqs * 2*np.pi * time_delta
                 phasespectrum[:, pol] += phase_shifts
-            elif account_for_timing:
+                start_time[pol] -= time_delta
+            if account_for_timing:
                 phase_shifts = -1.0e6*freqs * 2*np.pi * timings[pol]
                 phasespectrum[:, pol] += phase_shifts
-            elif account_for_arrival_times:
-                if self.interpolators_arrival_times is not None:
-                    timings[pol] += self.interpolators_arrival_times(x, y)
-                else:
+            if return_arrival_times or full_output:
+                if self.interpolators_arrival_times is None:
                     print('Trace arrival times were not set during init, only relative timings are returned!')
+                else:
+                    start_time[pol] += self.interpolators_arrival_times(x, y)
             else:
                 phase_shifts = -1.0e6*freqs * 2*np.pi * const_time_offset
                 phasespectrum[:, pol] += phase_shifts
@@ -624,8 +622,8 @@ class interp2d_signal:
         timeseries = np.fft.irfft(spectrum, axis=0)
 
         if full_output:
-            return timeseries, abs_spectrum, phasespectrum, timings
-        elif account_for_arrival_times:
-            return timeseries, timings
+            return timeseries, abs_spectrum, phasespectrum, timings, start_time
+        elif return_arrival_times:
+            return timeseries, start_time
         else:
             return timeseries
