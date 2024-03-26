@@ -1,0 +1,14 @@
+# Build files
+/build/
+/src/cr_pulse_interpolator.egg-info/
+
+# Demo files
+/demo/*.h5
+/demo/sample_data.txt
+
+# Virtual environemnts
+*venv*/
+
+# Project settings
+
+.idea/
