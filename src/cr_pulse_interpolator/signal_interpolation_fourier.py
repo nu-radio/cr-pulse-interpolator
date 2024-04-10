@@ -503,11 +503,16 @@ class interp2d_signal:
         filter_up_to_cutoff : set to True for low-pass filtering up to local estimated cutoff frequency, default False
         account_for_timing : set to False to have each pulse at a fixed time given by 'const_time_offset' instead of its natural arrival time. Default True
         return_arrival_times : bool, default=False
-            If True, the interpolated trace start times are returned as an array. This requires the start times
-            of the input traces to be provided during initialisation.
+            If True, the pulses are not shifted according to their arrival times. Rather, the interpolated
+            arrival times are returned as an array. If the trace arrival times were provided during initialisation,
+            these are interpolated and accounted for as well. Note that this option is incompatible with
+            `account_for_timing` and `pulse_centered` .
         const_time_offset : constant time offset if not using interpolated arrival times. Default 20e-9 (seconds).
         full_output : set to True to output both time series and spectra. Default False, returns only time series.
         """
+        # if account_for_timing + return_arrival_times > 1:
+        #     raise ValueError(f'account_for_timing and  return_arrival_times are not compatible,'
+        #                      f'please select only one')
 
         if (self.nofcalls == 0) and self.verbose:
             print('Method: %s' % self.method)
@@ -520,13 +525,11 @@ class interp2d_signal:
         freqs /= 1.0e6 # in MHz
         ## Make self.freqs (todo)
 
-        # Set up reconstructed spectra, timings, start_times, phases at freq=0
+        # Set up reconstructed spectra, timings, phases at freq=0
         abs_spectrum = np.zeros( (self.trace_length//2+1, Npols) )
         phasespectrum = np.zeros( (self.trace_length//2+1, Npols) )
         timings = np.zeros(Npols)
-        start_time = np.zeros(Npols, dtype=float)
         const_phases = np.zeros(Npols)
-
 
         if self.method == 'timing':
             index_nearest = self.nearest_antenna_index(x, y)
@@ -572,22 +575,21 @@ class interp2d_signal:
         for pol in range(Npols):
             timings[pol] = self.interpolators_timing[pol](x, y)
             const_phases[pol] = self.interpolators_constphase[pol](x, y)
-
             # Account for timing
             if pulse_centered:
                 # move pulse to the center of the trace
                 time_delta = self.trace_length * 0.5 * self.sampling_period
-                phase_shifts = -1.0e6*freqs * 2*np.pi * time_delta
+                phase_shifts = -1.0e6*freqs * 2*np.pi * (time_delta)
                 phasespectrum[:, pol] += phase_shifts
-                start_time[pol] -= time_delta
             if account_for_timing:
                 phase_shifts = -1.0e6*freqs * 2*np.pi * timings[pol]
                 phasespectrum[:, pol] += phase_shifts
-            if return_arrival_times or full_output:
-                if self.interpolators_arrival_times is None:
-                    print('Trace arrival times were not set during init, only relative timings are returned!')
+            if return_arrival_times:
+                if self.interpolators_arrival_times is not None:
+                    toa = self.interpolators_arrival_times(x, y)
+                    timings[pol] += toa
                 else:
-                    start_time[pol] += self.interpolators_arrival_times(x, y)
+                    print('Trace arrival times were not set during init, only relative timings are returned!')
             else:
                 phase_shifts = -1.0e6*freqs * 2*np.pi * const_time_offset
                 phasespectrum[:, pol] += phase_shifts
@@ -622,8 +624,8 @@ class interp2d_signal:
         timeseries = np.fft.irfft(spectrum, axis=0)
 
         if full_output:
-            return timeseries, abs_spectrum, phasespectrum, timings, start_time
+            return timeseries, abs_spectrum, phasespectrum, timings
         elif return_arrival_times:
-            return timeseries, start_time
+            return timeseries, timings
         else:
             return timeseries
