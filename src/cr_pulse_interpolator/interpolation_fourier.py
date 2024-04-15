@@ -1,5 +1,8 @@
 # Module for Fourier interpolation of 2D functions sampled on a polar grid
 # Author: A. Corstanje (a.corstanje@astro.ru.nl), 2020 - 2023
+#
+# See article: A. Corstanje et al. 2023, JINST 18 P09005, arXiv 2306.13514, doi 10.1088/1748-0221/18/09/P09005 
+# Please cite this when using code and/or methods in your analysis
 
 import numpy as np
 import scipy.interpolate as intp
@@ -17,11 +20,9 @@ class interp2d_fourier:
 
         radius = np.sqrt(x**2 + y**2)
         phi = np.arctan2(y, x) # uses interval -pi..pi
-        phi = np.deg2rad(np.around(np.rad2deg(phi)))
-        phi[np.abs(phi) < np.deg2rad(0.01)] = 0.0 # avoid pathology
-        phi[phi<0] += 2*np.pi # put into 0..2pi for ordering
-        phi_sorting = np.argsort(phi)
 
+        phi[phi<0] += 2*np.pi # put into 0..2pi for ordering.        
+        phi_sorting = np.argsort(phi)
         # Assume star-shaped pattern, i.e. radial # steps = number of (almost) identical phi-values
         # May not work very near (0, 0)
         self._phi0 = phi[phi_sorting][0]
@@ -30,7 +31,6 @@ class interp2d_fourier:
         radial_steps = len(np.where(np.abs(test) < 0.0001)[0])
         phi_steps = len(phi_sorting) // radial_steps
         phi_sorting = phi_sorting.reshape((phi_steps, radial_steps))
-
         indices = np.argsort(radius[phi_sorting], axis=1)
         for i in range(phi_steps): # Sort by radius; should be possible without for-loop...
             phi_sorting[i] = phi_sorting[i][indices[i]]

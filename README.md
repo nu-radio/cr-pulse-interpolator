@@ -2,7 +2,7 @@
 Full electric-field waveform interpolation for air shower simulations
 
 For elaborate information on the methods and their performance, see  
-Corstanje et al. (2023), arXiv **2306.13514**  
+Corstanje et al. (2023), JINST 18 P09005, arXiv **2306.13514**  
 Please cite this when using code and/or method in your analysis, publication etc.
 
 ## Contents
