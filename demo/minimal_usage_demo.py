@@ -48,7 +48,7 @@ Return shape is (Nsamples, Npol)
 Optionally, it can be low-pass filtered to an estimated reliable cutoff frequency
 This is a reliable yet sometimes overly conservative estimate up to which frequency the interpolation is accurate
 """
-interpolated_pulse, timings, _, _ = signal_interpolator(this_x, this_y,full_output=True)
+interpolated_pulse, timings, _, _ = signal_interpolator(this_x, this_y, full_output=True)
 
 """
 Because the trace start times were not provided during the interpolator initialisation, the returned timings
