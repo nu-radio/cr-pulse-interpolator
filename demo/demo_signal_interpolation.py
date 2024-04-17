@@ -3,7 +3,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-plt.ion()
+# plt.ion()
 
 import cr_pulse_interpolator.signal_interpolation_fourier as sigF
 
@@ -46,10 +46,11 @@ for index in test_indices:
 
     orig_pulse = test_antenna_data[index]
 
-    interpolated_pulse = signal_interpolator(this_x, this_y) #, filter_up_to_cutoff=True)
+    interpolated_pulse, timings, _, _ = signal_interpolator(this_x, this_y, full_output=True)
+    sample_offset = int(timings / signal_interpolator.sampling_period * -1)
 
     orig_pulse = orig_pulse[:, pol]
-    interpolated_pulse = interpolated_pulse[:, pol] # do only strongest polarization
+    interpolated_pulse = np.roll(interpolated_pulse[:, pol], sample_offset)  # do only strongest polarization
 
     this_cutoff_freq = signal_interpolator.get_cutoff_freq(this_x, this_y, pol)
 
@@ -73,14 +74,17 @@ for index in range(nof_test_positions):
 
     orig_pulse = test_antenna_data[index]
 
-    interpolated_pulse = signal_interpolator(this_x, this_y)
+    interpolated_pulse, timings, _, _ = signal_interpolator(this_x, this_y, full_output=True)
+    sample_offset = int(timings / signal_interpolator.sampling_period * -1)
 
     for pol in (0, 1):
         this_cutoff_freq = signal_interpolator.get_cutoff_freq(this_x, this_y, pol)
 
         #filtered_orig = demo_helper.do_filter_signal_lowpass(orig_pulse, this_cutoff_freq)
 
-        (CC_zeroshift, CC_optimized_timeshift, delta_t, energy_rel_diff) = demo_helper.get_crosscorrelation(orig_pulse[:, pol], interpolated_pulse[:, pol])
+        (CC_zeroshift, CC_optimized_timeshift, delta_t, energy_rel_diff) = demo_helper.get_crosscorrelation(
+            orig_pulse[:, pol], np.roll(interpolated_pulse[:, pol], sample_offset)
+        )
         print('Normalized cross correlation (CC) = %1.4f, time mismatch = %1.3f ns' % (CC_zeroshift, delta_t))
 
         CC_values[index, pol] = CC_zeroshift
@@ -93,3 +97,4 @@ plt.xlabel('Core distance [ m ]')
 plt.ylabel('Normalized CC')
 plt.grid()
 plt.legend(loc='best')
+plt.show()
