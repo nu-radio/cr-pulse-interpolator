@@ -3,7 +3,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-plt.ion()
+# plt.ion()
 from matplotlib import cm
 import cr_pulse_interpolator.interpolation_fourier as interpF
 
@@ -98,15 +98,21 @@ ZI = fourier_interpolator(XI, YI)
 
 # And plot it
 maxp = np.max(ZI)
-plt.figure()
-plt.gca().pcolor(XI, YI, ZI, vmax=maxp, vmin=0, cmap=cm.jet)
-plt.scatter(x, y, marker='+', s=3, color='w')
+fig, ax = plt.subplots()
+
+ax.pcolor(XI, YI, ZI, vmax=maxp, vmin=0, cmap=cm.jet)
+ax.scatter(x, y, marker='+', s=3, color='w')
+
 mm = cm.ScalarMappable(cmap=cm.jet)
 mm.set_array([0.0, maxp])
-cbar = plt.colorbar(mm)
+
+cbar = fig.colorbar(mm, ax=ax)
 cbar.set_label('Values of f(x, y)')
-plt.xlabel('x [ m ]')
-plt.ylabel('y [ m ]')
-plt.xlim(-250, 250)
-plt.ylim(-250, 250)
-plt.gca().set_aspect('equal')
+
+ax.set_xlabel('x [ m ]')
+ax.set_ylabel('y [ m ]')
+ax.set_xlim(-250, 250)
+ax.set_ylim(-250, 250)
+ax.set_aspect('equal')
+
+plt.show()
