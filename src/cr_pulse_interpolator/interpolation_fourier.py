@@ -19,9 +19,11 @@ class interp2d_fourier:
         """
 
         radius = np.sqrt(x**2 + y**2)
-        phi = np.arctan2(y, x) # uses interval -pi..pi
 
-        phi[phi<0] += 2*np.pi # put into 0..2pi for ordering.        
+        phi = np.arctan2(y, x)  # uses interval -pi..pi
+        phi = np.around(phi, 15)  # based on observation that offsets from 0 up to 1e-16 can result from arctan2
+        phi[phi<0] += 2*np.pi  # put into 0..2pi for ordering.
+
         phi_sorting = np.argsort(phi)
         # Assume star-shaped pattern, i.e. radial # steps = number of (almost) identical phi-values
         # May not work very near (0, 0)
