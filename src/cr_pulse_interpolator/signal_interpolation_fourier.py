@@ -364,7 +364,10 @@ class interp2d_signal:
         return self.interpolators_cutoff_freq[pol](x, y)
 
 
-    def __init__(self, x, y, signals, lowfreq=30.0, highfreq=500.0, sampling_period=0.1e-9, phase_method="phasor", radial_method='cubic', upsample_factor=5, coherency_cutoff_threshold=0.9, ignore_cutoff_freq_in_timing=False, verbose=False):
+    def __init__(self, x, y, signals, signals_start_times=None,
+                 lowfreq=30.0, highfreq=500.0, sampling_period=0.1e-9, phase_method="phasor",
+                 radial_method='cubic', upsample_factor=5, coherency_cutoff_threshold=0.9,
+                 ignore_cutoff_freq_in_timing=False, verbose=False):
         """
         Initialize a callable signal interpolator object
 
@@ -373,6 +376,8 @@ class interp2d_signal:
         x : 1D array for the simulated antenna positions (x) in m
         y : idem for y
         signals : 3D array of shape (Nant, Nsamples, Npols) with the antennas indexed in the first axis, the time traces in the second axis, and the polarizations in the third.
+        signals_start_times : np.ndarray, optional
+            The absolute start times of the input traces, shaped as (Nant,)
         lowfreq: low-frequency limit, typically set to 30 MHz. If a higher low-frequency limit is desired, it may likely be better to keep it at 30 MHz here, and high-pass filter later.
         highfreq : high-frequency limit, default 500.0 MHz, adjustable to e.g. 80 MHz.
         sampling_period : the time between samples in the data, default 0.1e-9 seconds (0.1 ns)
@@ -473,11 +478,19 @@ class interp2d_signal:
             self.interpolators_constphase[pol] = interpF.interp2d_fourier(x, y, self.const_phases[:, pol])
             self.interpolators_cutoff_freq[pol] = interpF.interp2d_fourier(x, y, self.cutoff_freq[:, pol])
 
+        if signals_start_times is not None:
+            self.interpolators_arrival_times = interpF.interp2d_fourier(x, y, signals_start_times)
+        else:
+            self.interpolators_arrival_times = None
+
         if self.verbose:
             print('Done.')
     # end __init__
 
-    def __call__(self, x, y, lowfreq=30.0, highfreq=500.0, filter_up_to_cutoff=False, account_for_timing=True, pulse_centered=False, const_time_offset=20.0e-9, full_output=False):
+    def __call__(self, x, y,
+                 lowfreq=30.0, highfreq=500.0, filter_up_to_cutoff=False,
+                 account_for_timing=True, pulse_centered=True,
+                 const_time_offset=20.0e-9, full_output=False):
         """
         Call the object, which computes the interpolation at arbitrary position (x, y)
 
@@ -488,10 +501,23 @@ class interp2d_signal:
         lowfreq : low-frequency limit for bandpass filtering of interpolated pulse, default 30.0 MHz
         highfreq : high-frequency limit, idem, default 500.0 MHz
         filter_up_to_cutoff : set to True for low-pass filtering up to local estimated cutoff frequency, default False
-        account_for_timing : set to False to have each pulse at a fixed time given by 'const_time_offset' instead of its natural arrival time. Default True
-        const_time_offset : constant time offset if not using interpolated arrival times. Default 20e-9 (seconds).
-        full_output : set to True to output both time series and spectra. Default False, returns only time series.
+        account_for_timing : bool, default=True
+            When True, the pulses are offset from each other according to their natural arrival time.
+            Set to False to have each pulse at a fixed time given by `const_time_offset` instead.
+        pulse_centered : bool, default=True
+            If True, the pulses are shifted to the center of the trace, instead of being close to the trace start
+            as CoREAS simulates them. This is useful to deal with the ringing introduced by filtering the traces.
+        const_time_offset : float, default=20e-9
+            Constant time offset in seconds if not using interpolated arrival times.
+            Note that if used together with `pulse_centered`, this time offset is with respect to the center
+            of the trace.
+        full_output : bool, default=False
+            Put this to True to retrieve arrival time and spectra, next to the signal traces.
         """
+        # if account_for_timing + return_arrival_times > 1:
+        #     raise ValueError(f'account_for_timing and  return_arrival_times are not compatible,'
+        #                      f'please select only one')
+
         if (self.nofcalls == 0) and self.verbose:
             print('Method: %s' % self.method)
         self.nofcalls += 1
@@ -549,19 +575,37 @@ class interp2d_signal:
         else:
             raise ValueError('Unknown reconstruction method: %s' % self.method)
 
+        # Get the start time of the trace from the interpolation
+        trace_start_time = 0
+        if self.interpolators_arrival_times is not None:
+            trace_start_time += self.interpolators_arrival_times(x, y)
+        else:
+            # This should be a logging warning statement
+            print('Trace arrival times were not set during init, only relative timings are returned!')
+        if pulse_centered:
+            # We account for the time shift here, because the later loop is over all polarisations and
+            # then this operation would be applied multiple times
+            time_delta = self.trace_length * 0.5 * self.sampling_period
+            trace_start_time -= time_delta
+        if not account_for_timing:
+            # The interpolated trace start times were from before the timings are taken out from the phase
+            # So it case we do not put them back in, we need to adjust the start times
+            trace_start_time -= const_time_offset
+            print('Relative timing between polarisations is not taken into account!')
+            # TODO: could make trace_start_time array of shape (Npol) and adjust each pol for timings?
+
         # Apply the 30-80 MHz arrival times and phase constants, each interpolated to (x, y) first
         for pol in range(Npols):
             timings[pol] = self.interpolators_timing[pol](x, y)
             const_phases[pol] = self.interpolators_constphase[pol](x, y)
-
             # Account for timing
             if pulse_centered:
                 # move pulse to the center of the trace
                 time_delta = self.trace_length * 0.5 * self.sampling_period
-                phase_shifts = -1.0e6*freqs * 2*np.pi * (timings[pol] + time_delta)
+                phase_shifts = -1.0e6 * freqs * 2 * np.pi * time_delta
                 phasespectrum[:, pol] += phase_shifts
-            elif account_for_timing:
-                phase_shifts = -1.0e6*freqs * 2*np.pi * timings[pol]
+            if account_for_timing:
+                phase_shifts = -1.0e6 * freqs * 2 * np.pi * timings[pol]
                 phasespectrum[:, pol] += phase_shifts
             else:
                 phase_shifts = -1.0e6*freqs * 2*np.pi * const_time_offset
@@ -597,6 +641,6 @@ class interp2d_signal:
         timeseries = np.fft.irfft(spectrum, axis=0)
 
         if full_output:
-            return (timeseries, abs_spectrum, phasespectrum)
+            return timeseries, trace_start_time, abs_spectrum, phasespectrum
         else:
             return timeseries
