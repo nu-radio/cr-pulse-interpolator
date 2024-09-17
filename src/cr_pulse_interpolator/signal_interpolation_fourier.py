@@ -136,11 +136,9 @@ class interp2d_signal:
             if sum_over_pol:
                 hilbert_sum_over_pol = np.sqrt(np.sum(hilbert_envelope ** 2, axis=2))
 
-                pulse_timings = (np.argmax(hilbert_sum_over_pol, axis=1) - nof_samples // 2)
-                pulse_timings *= (timestep / upsample_factor)
+                pulse_timings = (np.argmax(hilbert_sum_over_pol, axis=1) - nof_samples // 2) * (timestep / upsample_factor)
             else:
-                pulse_timings_per_pol = (np.argmax(hilbert_envelope, axis=1) - nof_samples // 2)
-                pulse_timings_per_pol *= (timestep / upsample_factor)
+                pulse_timings_per_pol = (np.argmax(hilbert_envelope, axis=1) - nof_samples // 2) * (timestep / upsample_factor)
 
         else:
             pulse_timings_per_pol = (np.argmax(signals_upsampled, axis=1) - nof_samples // 2) * (
@@ -485,10 +483,10 @@ class interp2d_signal:
         self.const_phases = self.get_constant_phases(high_freq=80.0)
 
         # Remove phase constant from phase spectra
-        self.phasespectrum_corrected -= self.const_phases[:, np.newaxis,
-                                        :]  # from (Nant, Npol) to (Nant, Nsamples, Npol)
+        self.phasespectrum_corrected -= self.const_phases[:, np.newaxis, :]  # (Nant, Npol) to (Nant, Nsamples, Npol)
         self.phasespectrum_corrected_before_freq_dependent = np.copy(
-            self.phasespectrum_corrected)  # for testing / demo purposes
+            self.phasespectrum_corrected
+        )  # for testing / demo purposes
 
         # Get degree of coherency and reliable high-cutoff frequency
         if self.verbose:
