@@ -140,6 +140,7 @@ class interp2d_signal:
             else:
                 pulse_timings_per_pol = (np.argmax(hilbert_envelope, axis=1) - nof_samples // 2) * (timestep / upsample_factor)
 
+
         else:
             pulse_timings_per_pol = (np.argmax(signals_upsampled, axis=1) - nof_samples // 2) * (
                         timestep / upsample_factor)
@@ -557,7 +558,7 @@ class interp2d_signal:
             for pol in range(Npols):
                 self.interpolators_abs_spectrum[pol, freq_channel] = interpF.interp2d_fourier(
                     x, y, self.abs_spectrum[:, freq_channel, pol],
-                    radial_method=radial_method
+                    radial_method=radial_method, fill_value=None
                 )
                 self.interpolators_freq_dependent_timing[pol, freq_channel] = interpF.interp2d_fourier(
                     x, y, self.freq_dependent_timing[:, freq_channel, pol],
