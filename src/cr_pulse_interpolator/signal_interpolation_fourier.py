@@ -558,17 +558,21 @@ class interp2d_signal:
         for freq_channel in range(nof_freq_channels):
             for pol in range(Npols):
                 self.interpolators_abs_spectrum[pol, freq_channel] = interpF.interp2d_fourier(
-                    x, y, self.abs_spectrum[:,freq_channel, pol]
+                    x, y, self.abs_spectrum[:, freq_channel, pol],
+                    radial_method=radial_method
                 )
                 self.interpolators_freq_dependent_timing[pol, freq_channel] = interpF.interp2d_fourier(
-                    x, y, self.freq_dependent_timing[:, freq_channel,pol]
+                    x, y, self.freq_dependent_timing[:, freq_channel, pol],
+                    radial_method=radial_method
                 )
 
                 self.interpolators_cosphi[pol, freq_channel] = interpF.interp2d_fourier(
-                    x, y, np.cos(self.phasespectrum_corrected[:, freq_channel, pol])
+                    x, y, np.cos(self.phasespectrum_corrected[:, freq_channel, pol]),
+                    radial_method=radial_method
                 )
                 self.interpolators_sinphi[pol, freq_channel] = interpF.interp2d_fourier(
-                    x, y, np.sin(self.phasespectrum_corrected[:, freq_channel, pol])
+                    x, y, np.sin(self.phasespectrum_corrected[:, freq_channel, pol]),
+                    radial_method=radial_method
                 )
 
         for pol in range(Npols):
