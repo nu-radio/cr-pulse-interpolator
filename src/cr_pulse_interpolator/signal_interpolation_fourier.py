@@ -10,6 +10,44 @@ import cr_pulse_interpolator.interpolation_fourier as interpF
 
 
 class interp2d_signal:
+    """
+    Initialize a callable signal interpolator object
+
+    Parameters
+    ----------
+    x : np.ndarray
+        1D array for the simulated antenna positions (x) in m
+    y : np.ndarray
+        idem for y
+    signals : np.ndarray
+        3D array of shape (Nant, Nsamples, Npols) with the antennas indexed in the first axis,
+        the time traces in the second axis, and the polarizations in the third.
+    signals_start_times : np.ndarray, optional
+        The absolute start times of the input traces, shaped as (Nant,)
+    lowfreq: float, default=30.0
+        low-frequency limit in MHz, typically set to 30 MHz. If a higher low-frequency limit is desired,
+        it may likely be better to keep it at 30 MHz here, and high-pass filter later.
+    highfreq : float, default=500.0
+        high-frequency limit in MHz, adjustable to e.g. 80 MHz.
+    sampling_period : float, default=0.1e-9
+        the time between samples in the data, in seconds (default is 0.1 ns)
+    phase_method : {"phasor", "timing"}
+        the phase interpolation to use, cf. pg 8 in the article ("Method (1)" vs "Method (2)").
+        The default is "phasor", ie Method (1).
+    radial_method : str, default='cubic'
+        the interp1d method used for radially interpolating Fourier coefficients.
+        Usually set to 'cubic' for cubic splines, in interpolation_fourier.
+    upsample_factor : int, default=5
+        upsampling factor used for sub-sample timing accuracy.
+    coherency_cutoff_threshold : float, default=0.9
+        the value of Eq. (2.4) that defines the reliable high-frequency limit
+        on each position. Used internally in the "timing" method, also available to the user
+        via self.get_cutoff_freq(x, y, pol) above.
+    ignore_cutoff_freq_in_timing : bool, default=False
+        can be set to True when experimenting with the "timing" method without its stopping criterion.
+    verbose : bool, default=False
+        set to True for more info while initializing
+    """
 
     def get_spectra(self, signals):
         """
@@ -18,7 +56,8 @@ class interp2d_signal:
 
         Parameters
         ----------
-        signals : the input time traces
+        signals : np.ndarray
+            the input time traces, shaped as (Nants, Nsamples, Npol)
         """
         Nsamples = signals.shape[1]
 
@@ -40,19 +79,26 @@ class interp2d_signal:
                                 do_hilbert_envelope=True):
         """
         Produce pulse arrival times from Hilbert envelope maxima (if do_hilbert_envelope) or from raw E-field maxima.
-        Assumed shape for 'signals' is (Nant, Nsamples, Npols), i.e. time traces along second axis
-        Filtering is done between lowfreq and highfreq in MHz, timing is done on filtered signals (after inverse-FFT)
-        Option sum_over_pol is to sum the square of the Hilbert envelopes of each polarization, to get one arrival time
-        over all polarizations (may help at low signal strength), default True.
+        Assumed shape for `signals` is (Nant, Nsamples, Npols), i.e. time traces along second axis.
+        Filtering is done between `lowfreq` and `highfreq` in MHz and the timing is done on
+        filtered signals (after inverse-FFT).
+        Option `sum_over_pol` is to sum the square of the Hilbert envelopes of each polarization, to get one arrival
+        time over all polarizations (may help at low signal strength), default True.
 
         Parameters
         ----------
-        signals : 3D array of shape (Nant, Nsamples, Npols)
-        lowfreq : low-frequency cutoff, default 30.0 MHz
-        highfreq : high-frequency cutoff, default 500.0 MHz
-        upsample_factor : upsampling factor to use for sub-sample timing accuracy, default 10
-        sum_over_pol : sum over polarizations if do_hilbert_envelope, default True
-        do_hilbert_envelope : use Hilbert envelope for timing if True, else direct E-field maximum
+        signals : np.ndarray
+            3D array of shape (Nant, Nsamples, Npols)
+        lowfreq : float, default=30.0
+            low-frequency cutoff in MHz
+        highfreq : float, default=500.0
+            high-frequency cutoff in MHz
+        upsample_factor : int, default=10
+            upsampling factor to use for sub-sample timing accuracy
+        sum_over_pol : bool, default=True
+            Whether to sum over polarizations if do_hilbert_envelope
+        do_hilbert_envelope : bool, default=True
+            If True, use Hilbert envelope for timing. Else use the direct E-field maximum.
         """
         (Nant, Nsamples, Npols) = signals.shape
 
@@ -113,26 +159,32 @@ class interp2d_signal:
     @staticmethod
     def phase_wrap(phases):
         """
-        wrap 'phases' (float or any array shape) into interval (-pi, pi)
+        wrap `phases` (float or any array shape) into interval (-pi, pi)
+
+        Parameters
+        ----------
+        phases : array_like
+            The values to wrap into interval (-pi, pi)
         """
         return (phases + np.pi) % (2 * np.pi) - np.pi
 
     def timing_corrected_phases(self, freqs, phase_spectrum, pulse_timings):
         """
         Take phase_spectrum as input
-        Account for a linear function from the pulse_timings, i.e.
-        according to delta_phi = 2 pi f delta_t
+        Account for a linear function from the pulse_timings, i.e. according to delta_phi = 2 pi f delta_t
         Return as timing-corrected phase spectrum
 
         Parameters
         ----------
-        freqs : frequency axis of FFTs
-        phase_spectrum : 3D array of shape (Nants, Nphases, Npols) containing phase spectra
-        pulse_timings : 2D array of shape (Nants, Npols) containing pulse timings
+        freqs : np.ndarray
+            frequency axis of FFTs
+        phase_spectrum : np.ndarray
+            3D array of shape (Nants, Nphases, Npols) containing phase spectra
+        pulse_timings : np.ndarray
+            2D array of shape (Nants, Npols) containing pulse timings
         """
         (Nants, Nphases, Npols) = phase_spectrum.shape
 
-        freq_step = freqs[1]
         phase_spectrum_corrected = np.zeros(phase_spectrum.shape)
 
         for i, ant in enumerate(range(Nants)):
@@ -159,9 +211,12 @@ class interp2d_signal:
 
         Parameters
         ----------
-        x : 1D array of antenna position x (in any order)
-        y : same for y (same order)
-        phases : 1D array, i.e. one phase per antenna (same order of antennas as x, y)
+        x : np.ndarray
+            1D array of antenna position x (in any order)
+        y : np.ndarray
+            same for y (same order)
+        phases : np.ndarray
+            1D array, i.e. one phase per antenna (same order of antennas as x, y)
         """
         # Put them into a 2D array with a radial and an angular axis
         indices = interpF.interp2d_fourier.get_ordering_indices(x, y)
@@ -180,20 +235,27 @@ class interp2d_signal:
 
         return phases_unwrapped
 
+    def sum_corrected_spectrum(self, high_freq, low_freq):
+        complex_phases = np.exp(1.0j * self.phasespectrum_corrected)
+        spectrum_corrected = self.abs_spectrum * complex_phases
+
+        freq_range = np.where((self.freqs > low_freq) & (self.freqs < high_freq))[0]
+        complex_sum = np.sum(spectrum_corrected[:, freq_range, :], axis=1)
+
+        return complex_sum, freq_range
+
     def degree_of_coherency(self, low_freq=30.0, high_freq=500.0):
         """
         This implements Eq. (2.4) in the article, for given frequency band limits
+
+        Parameters
+        ----------
+        low_freq : float, default=30.0
+        high_freq : float, default=500.0
         """
-        complex_phases = np.exp(1.0j * self.phasespectrum_corrected)
-        ampli = self.abs_spectrum
+        complex_sum, freq_range = self.sum_corrected_spectrum(high_freq, low_freq)
 
-        spectrum_corrected = ampli * complex_phases
-
-        freq_range = np.where((self.freqs > low_freq) & (self.freqs < high_freq))[0]
-
-        complex_sum = np.sum(spectrum_corrected[:, freq_range, :], axis=1)
-
-        abs_sum = np.sum(ampli[:, freq_range, :], axis=1)
+        abs_sum = np.sum(self.abs_spectrum[:, freq_range, :], axis=1)
 
         coherency = np.abs(complex_sum) / abs_sum
 
@@ -205,14 +267,13 @@ class interp2d_signal:
         Phases have been corrected to have maximum Hilbert envelope at "t"=0
         So, add up the complex phases, weighted by the amplitudes, to get the constant phase
         which determines if the pulse is cos-like or sin-like, or a value in between
+
+        Parameters
+        ----------
+        low_freq : float, default=30.0
+        high_freq : float, default=500.0
         """
-        complex_phases = np.exp(1.0j * self.phasespectrum_corrected)
-        ampli = self.abs_spectrum
-
-        spectrum_corrected = ampli * complex_phases
-
-        freq_range = np.where((self.freqs > low_freq) & (self.freqs < high_freq))[0]
-        complex_sum = np.sum(spectrum_corrected[:, freq_range, :], axis=1)
+        complex_sum, freq_range = self.sum_corrected_spectrum(high_freq, low_freq)
 
         const_phases = np.angle(complex_sum)
 
@@ -231,10 +292,14 @@ class interp2d_signal:
 
         Parameters
         ----------
-        bandwidth : frequency bandwidth in MHz, default 50.0
-        low_freq : low frequency cutoff in MHz, default 30.0
-        high_freq : high frequency cutoff in MHz, default 500.0
-        coherency_cutoff : threshold value for coherency level, default 0.8
+        bandwidth : float, default=50.0
+            frequency bandwidth in MHz
+        low_freq : float, default=30.0
+            low frequency cutoff in MHz
+        high_freq : float, default=500.0
+            high frequency cutoff in MHz
+        coherency_cutoff : float, default=0.8
+            threshold value for coherency level
         """
         freq_indices = np.where((self.freqs > low_freq) & (self.freqs < (high_freq)))[0]  # high_freq - bandwidth?
 
@@ -264,7 +329,8 @@ class interp2d_signal:
 
         return coherency_vs_freq, cutoff_freq
 
-    def get_freq_dependent_timing_correction(self, lowfreq=30.0, highfreq=500.0, bandwidth=50.0, upsample_factor=10,
+    def get_freq_dependent_timing_correction(self, low_freq=30.0, high_freq=500.0,
+                                             bandwidth=50.0, upsample_factor=10,
                                              ignore_cutoff_freq_in_timing=False):
         """
         Implements "method (2)" to account for phase spectra towards higher frequencies.
@@ -274,16 +340,21 @@ class interp2d_signal:
 
         Parameters
         ----------
-        low_freq : low frequency cutoff in MHz, default 30.0
-        high_freq : high frequency cutoff in MHz, default 500.0
-        bandwidth : frequency bandwidth in MHz, default 50.0
-        upsample_factor : upsampling factor for timing accuracy, default 10
-        ignore_cutoff_freq_in_timing: proceed with pulse timing beyond cutoff frequency, default False
+        low_freq : float, default=30.0
+            low frequency cutoff in MHz
+        high_freq : float, default=500.0
+            high frequency cutoff in MHz
+        bandwidth : float, default=50.0
+            frequency bandwidth in MHz
+        upsample_factor : int, default=10
+            upsampling factor for timing accuracy
+        ignore_cutoff_freq_in_timing: bool, default=False
+            proceed with pulse timing beyond cutoff frequency
         """
-        start_freq = self.freqs[self.freqs >= lowfreq][0]
-        end_freq = self.freqs[self.freqs <= (highfreq + bandwidth / 2)][-1]
+        start_freq = self.freqs[self.freqs >= low_freq][0]
+        end_freq = self.freqs[self.freqs <= (high_freq + bandwidth / 2)][-1]
 
-        freq_indices = np.where((self.freqs >= lowfreq) & (self.freqs < (highfreq + bandwidth / 2)))[0]
+        freq_indices = np.where((self.freqs >= low_freq) & (self.freqs < (high_freq + bandwidth / 2)))[0]
 
         spectrum_after_correction_so_far = self.abs_spectrum * np.exp(1j * self.phasespectrum_corrected)
         signals = np.fft.irfft(spectrum_after_correction_so_far, axis=1)
@@ -296,8 +367,8 @@ class interp2d_signal:
             else:
                 this_freq = self.freqs[freq_index]
 
-                band_low = max(lowfreq, this_freq - bandwidth / 2)
-                band_high = min(highfreq + bandwidth, this_freq + bandwidth / 2)
+                band_low = max(low_freq, this_freq - bandwidth / 2)
+                band_high = min(high_freq + bandwidth, this_freq + bandwidth / 2)
 
                 if ((band_high - band_low) < bandwidth) and (band_low + bandwidth < band_high):
                     band_high = band_low + bandwidth
@@ -340,10 +411,14 @@ class interp2d_signal:
 
         Parameters
         ----------
-        x : x position (float, single value)
-        y : idem for y
-        same_radius : consider only antennas at the same radius, +/- 'tolerance'
-        tolerance : tolerance in m for same_radius search
+        x : float
+            x position (single value)
+        y : float
+            idem for y
+        same_radius : bool, default=False,
+            consider only antennas at the same radius, +/- 'tolerance'
+        tolerance : float, default=1.0
+            tolerance in m for same_radius search
         """
         if not same_radius:
             index = np.argmin((self.pos_x - x) ** 2 + (self.pos_y - y) ** 2)
@@ -371,9 +446,12 @@ class interp2d_signal:
 
         Parameters
         ----------
-        x : x position (float, single value)
-        y : idem for y
-        pol : polarization number (int, single value)
+        x : float
+            x position (single value)
+        y : float
+            idem for y
+        pol : int
+            polarization number (single value)
         """
         return self.interpolators_cutoff_freq[pol](x, y)
 
@@ -381,33 +459,6 @@ class interp2d_signal:
                  lowfreq=30.0, highfreq=500.0, sampling_period=0.1e-9, phase_method="phasor",
                  radial_method='cubic', upsample_factor=5, coherency_cutoff_threshold=0.9,
                  ignore_cutoff_freq_in_timing=False, verbose=False):
-        """
-        Initialize a callable signal interpolator object
-
-        Parameters
-        ----------
-        x : 1D array for the simulated antenna positions (x) in m
-        y : idem for y
-        signals : 3D array of shape (Nant, Nsamples, Npols) with the antennas indexed in the first axis,
-        the time traces in the second axis, and the polarizations in the third.
-        signals_start_times : np.ndarray, optional
-            The absolute start times of the input traces, shaped as (Nant,)
-        lowfreq: low-frequency limit, typically set to 30 MHz. If a higher low-frequency limit is desired,
-        it may likely be better to keep it at 30 MHz here, and high-pass filter later.
-        highfreq : high-frequency limit, default 500.0 MHz, adjustable to e.g. 80 MHz.
-        sampling_period : the time between samples in the data, default 0.1e-9 seconds (0.1 ns)
-        phase_method : the options for the phase interpolation are "phasor" and "timing",
-        cf. pg 8 in the article ("Method (1)" vs "Method (2)"), default "phasor" (Method (1))
-        radial_method : the interp1d method used for radially interpolating Fourier coefficients.
-        Usually set to 'cubic' for cubic splines, in interpolation_fourier.
-        upsample_factor : upsampling factor used for sub-sample timing accuracy. Default 5.
-        coherency_cutoff_threshold : the value of Eq. (2.4) that defines the reliable high-frequency limit
-        on each position. Used internally in the "timing" method, also available to the user
-        via self.get_cutoff_freq(x, y, pol) above. Default 0.9.
-        ignore_cutoff_freq_in_timing : can be set to True when experimenting with the "timing" method without
-        its stopping criterion, default False.
-        verbose : print info while initializing
-        """
         self.nofcalls = 0
         self.verbose = verbose
         self.method = phase_method
@@ -455,7 +506,7 @@ class interp2d_signal:
 
             # Get arrival times in a sliding frequency window
             self.freq_dependent_timing = self.get_freq_dependent_timing_correction(
-                lowfreq=lowfreq, highfreq=highfreq,
+                low_freq=lowfreq, high_freq=highfreq,
                 upsample_factor=upsample_factor,
                 ignore_cutoff_freq_in_timing=ignore_cutoff_freq_in_timing
             )
@@ -538,15 +589,20 @@ class interp2d_signal:
                  account_for_timing=True, pulse_centered=True,
                  const_time_offset=20.0e-9, full_output=False):
         """
-        Call the object, which computes the interpolation at arbitrary position (x, y)
+        Computes the interpolation at arbitrary position (x, y)
 
         Parameters
         ----------
-        x : the x position in m (float, single value)
-        y : idem for y
-        lowfreq : low-frequency limit for bandpass filtering of interpolated pulse, default 30.0 MHz
-        highfreq : high-frequency limit, idem, default 500.0 MHz
-        filter_up_to_cutoff : set to True for low-pass filtering up to local estimated cutoff frequency, default False
+        x : float
+            the x position in m (single value)
+        y : float
+            idem for y
+        lowfreq : float, default=30.0
+            low-frequency limit in MHz for bandpass filtering of interpolated pulse
+        highfreq : float, default=500.0
+            high-frequency limit in MHz, idem
+        filter_up_to_cutoff : bool, default=False
+            set to True for low-pass filtering up to local estimated cutoff frequency
         account_for_timing : bool, default=True
             When True, the pulses are offset from each other according to their natural arrival time.
             Set to False to have each pulse at a fixed time given by `const_time_offset` instead.
