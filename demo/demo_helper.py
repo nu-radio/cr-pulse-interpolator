@@ -151,6 +151,10 @@ def read_data_hdf5(filename):
 
     footprint_antenna_data = np.array(demo_file.get('footprint_antennas'))
     test_antenna_data = np.array(demo_file.get('test_antennas'))
+
+    footprint_time_axis = np.array(demo_file.get('time_axis_footprint_antennas'))
+    test_time_axis = np.array(demo_file.get('time_axis_test_antennas'))
+
     demo_file.close()
 
-    return (zenith, azimuth, xmax, footprint_pos_x, footprint_pos_y, test_pos_x, test_pos_y, footprint_antenna_data, test_antenna_data)
+    return (zenith, azimuth, xmax, footprint_pos_x, footprint_pos_y, test_pos_x, test_pos_y, footprint_antenna_data, test_antenna_data, footprint_time_axis, test_time_axis)

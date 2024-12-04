@@ -24,7 +24,7 @@ to avoid alignment with vx(vxB) and therefore having near-zero signals along cir
 """
 # Read in demo data
 demo_filename = 'demo_shower.h5'
-(zenith, azimuth, xmax, footprint_pos_x, footprint_pos_y, test_pos_x, test_pos_y, footprint_antenna_data, test_antenna_data) = demo_helper.read_data_hdf5(demo_filename)
+(zenith, azimuth, xmax, footprint_pos_x, footprint_pos_y, test_pos_x, test_pos_y, footprint_antenna_data, test_antenna_data, footprint_time_axis, test_time_axis) = demo_helper.read_data_hdf5(demo_filename)
 
 """
 Initialize the interpolator object. It needs the antenna positions (x and y as 1D arrays) and their time traces as 
