@@ -144,7 +144,6 @@ class interp2d_signal:
             else:
                 pulse_timings_per_pol = (np.argmax(hilbert_envelope, axis=1) - nof_samples // 2) * (timestep / upsample_factor)
 
-
         else:
             pulse_timings_per_pol = (np.argmax(signals_upsampled, axis=1) - nof_samples // 2) * (
                         timestep / upsample_factor)
@@ -462,6 +461,7 @@ class interp2d_signal:
                  lowfreq=30.0, highfreq=500.0, sampling_period=0.1e-9, phase_method="phasor",
                  radial_method='cubic', upsample_factor=5, coherency_cutoff_threshold=0.9,
                  allow_extrapolation=True, ignore_cutoff_freq_in_timing=False, verbose=False):
+
         self.nofcalls = 0
         self.verbose = verbose
         self.method = phase_method

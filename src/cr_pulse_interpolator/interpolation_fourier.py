@@ -109,6 +109,7 @@ class interp2d_fourier:
         self.angular_FFT /= float(length)  # normalize
 
         # Produce interpolator function, interpolating the FFT components as a function of radius
+
         if fill_value is None:
             fill_value = (self.angular_FFT[0], np.zeros_like(self.angular_FFT[0]))
         self.interpolator_radius = intp.interp1d(
