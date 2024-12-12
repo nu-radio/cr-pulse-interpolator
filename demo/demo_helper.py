@@ -76,20 +76,24 @@ def get_crosscorrelation(test_signal, orig_signal, upsampling_factor=10):
 
 
 
-def plot_pulse_and_spectrum(orig_pulse, interpolated_pulse, x, y, cutoff_freq, pol):
+def plot_pulse_and_spectrum(orig_time_axis, orig_pulse, interpolated_time_axis, interpolated_pulse, x, y, cutoff_freq, pol):
     """
     Plots an interpolated pulse together with a 'true' simulated pulse
 
     Parameters
     ----------
-    orig_pulse : time series, 1D array
-    interpolated_pulse : idem
+    orig_time_axis : np.ndarray
+        Time axis for the original pulse
+    orig_pulse : np.ndarray
+        time trace, 1D array
+    interpolated_pulse : np.ndarray
+    interpolated_time_axis : np.ndarray
+        Time axis for the interpolated pulse
     x : the x position (float), for annotation in the plot
     y : idem for y
     cutoff_freq : value of estimated cutoff frequency, for annotation only
     pol : polarization number
     """
-    time_axis = 0.1 * np.arange(len(orig_pulse))
     radius = np.sqrt(x**2 + y**2)
     freqs = get_freq_axis(orig_pulse)
 
@@ -99,10 +103,12 @@ def plot_pulse_and_spectrum(orig_pulse, interpolated_pulse, x, y, cutoff_freq, p
     ax1, ax2 = ax[0], ax[1]
 
     #plt.figure()
-    ax1.plot(time_axis, 1.0e6 * orig_pulse, label='orig pulse', lw=2)
-    ax1.plot(time_axis, 1.0e6 * interpolated_pulse, label='interpolated pulse', lw=2)
-    residual = 1.0e6 * (interpolated_pulse - orig_pulse)
-    ax1.plot(time_axis, residual, label='difference', lw=2, c='g')
+    ax1.plot(orig_time_axis, 1.0e6 * orig_pulse, label='orig pulse', lw=2)
+    ax1.plot(interpolated_time_axis, 1.0e6 * interpolated_pulse, label='interpolated pulse', lw=2)
+
+    time_offset = int(orig_pulse.argmax() - interpolated_pulse.argmax())
+    residual = 1.0e6 * (np.roll(interpolated_pulse, time_offset) - orig_pulse)
+    ax1.plot(orig_time_axis, residual, label='difference', lw=2, c='g')
 
     interpolated_energy = np.sum(interpolated_pulse**2)
     orig_energy = np.sum(orig_pulse**2)
@@ -111,7 +117,7 @@ def plot_pulse_and_spectrum(orig_pulse, interpolated_pulse, x, y, cutoff_freq, p
     ax1.grid()
     ax1.set_xlabel('Time [ ns ]')
     ax1.set_ylabel(r'E-field [ $\mu$V/m ]')
-    ax1.set_xlim(0.0, 50.0)
+    ax1.set_xlim(orig_time_axis[0], orig_time_axis[500])
     ax1.legend(loc='best')
 
     #plt.figure()
@@ -130,6 +136,8 @@ def plot_pulse_and_spectrum(orig_pulse, interpolated_pulse, x, y, cutoff_freq, p
     ax2.set_xlim(0, 500)
     ax2.set_ylim(0.0, 1.2*np.max(orig_pulse_powerspec))
     ax2.legend(loc='best')
+
+    plt.show()
 
 
 def read_data_hdf5(filename):
@@ -151,6 +159,10 @@ def read_data_hdf5(filename):
 
     footprint_antenna_data = np.array(demo_file.get('footprint_antennas'))
     test_antenna_data = np.array(demo_file.get('test_antennas'))
+
+    footprint_time_axis = np.array(demo_file.get('time_axis_footprint_antennas'))
+    test_time_axis = np.array(demo_file.get('time_axis_test_antennas'))
+
     demo_file.close()
 
-    return (zenith, azimuth, xmax, footprint_pos_x, footprint_pos_y, test_pos_x, test_pos_y, footprint_antenna_data, test_antenna_data)
+    return (zenith, azimuth, xmax, footprint_pos_x, footprint_pos_y, test_pos_x, test_pos_y, footprint_antenna_data, test_antenna_data, footprint_time_axis, test_time_axis)
