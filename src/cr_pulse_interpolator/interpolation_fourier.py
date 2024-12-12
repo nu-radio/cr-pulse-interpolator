@@ -26,7 +26,7 @@ class interp2d_fourier:
     fill_value : array-like or (array-like, array_like) or “extrapolate”, default='extrapolate'
         the fill value to pass to interp1d to use for a radius outside the min..max radius interval from
         the input. Set to 'extrapolate' to extrapolate beyond radial limits; accuracy outside the interval is limited.
-        Optional, default None, meaning stay constant for r < r_min, and 0 for r > r_max
+        If set to None, the `fill_value` is set such the output is constant for r < r_min, and 0 for r > r_max.
     recover_concentric_rings : bool, default=False
         set True if the grid is not purely circular-symmetric; results may not be accurate.
     """
@@ -109,8 +109,11 @@ class interp2d_fourier:
         self.angular_FFT /= float(length)  # normalize
 
         # Produce interpolator function, interpolating the FFT components as a function of radius
+
+        if fill_value is None:
+            fill_value = (self.angular_FFT[0], np.zeros_like(self.angular_FFT[0]))
         self.interpolator_radius = intp.interp1d(
-            self.radial_axis, self.angular_FFT, axis=0, kind=radial_method, fill_value=fill_value
+            self.radial_axis, self.angular_FFT, axis=0, kind=radial_method, fill_value=fill_value, bounds_error=False
         )  # Interpolates the Fourier components along the radial axis
 
     def __call__(self, x, y, max_fourier_mode=None):

@@ -43,6 +43,10 @@ class interp2d_signal:
         the value of Eq. (2.4) that defines the reliable high-frequency limit
         on each position. Used internally in the "timing" method, also available to the user
         via self.get_cutoff_freq(x, y, pol) above.
+    allow_extrapolation : bool, default=True
+        if True, the interpolator will attempt to extrapolate the signal to outside the radius of the
+        input starshape. If set to False, calls to positions outside of the interpolation range will
+        return zero-traces, while positions at radii smaller than r_min will return the result at r_min.
     ignore_cutoff_freq_in_timing : bool, default=False
         can be set to True when experimenting with the "timing" method without its stopping criterion.
     verbose : bool, default=False
@@ -456,7 +460,8 @@ class interp2d_signal:
     def __init__(self, x, y, signals, signals_start_times=None,
                  lowfreq=30.0, highfreq=500.0, sampling_period=0.1e-9, phase_method="phasor",
                  radial_method='cubic', upsample_factor=5, coherency_cutoff_threshold=0.9,
-                 ignore_cutoff_freq_in_timing=False, verbose=False):
+                 allow_extrapolation=True, ignore_cutoff_freq_in_timing=False, verbose=False):
+
         self.nofcalls = 0
         self.verbose = verbose
         self.method = phase_method
@@ -465,7 +470,9 @@ class interp2d_signal:
         (Nants, Nsamples, Npols) = signals.shape  # hard assumption, 3D...
         self.trace_length = Nsamples
         self.sampling_period = sampling_period
-        if self.verbose: print('Setting sampling period to %1.1e seconds' % self.sampling_period)
+        if self.verbose:
+            print('Setting sampling period to %1.1e seconds' % self.sampling_period)
+
         # Get the abs-amplitude and phase spectra from the time traces
         (self.freqs, all_antennas_spectrum, self.abs_spectrum, self.phasespectrum, self.unwrapped_phases) = self.get_spectra(signals)
 
@@ -557,7 +564,7 @@ class interp2d_signal:
             for pol in range(Npols):
                 self.interpolators_abs_spectrum[pol, freq_channel] = interpF.interp2d_fourier(
                     x, y, self.abs_spectrum[:, freq_channel, pol],
-                    radial_method=radial_method
+                    radial_method=radial_method, fill_value='extrapolate' if allow_extrapolation else None
                 )
                 self.interpolators_freq_dependent_timing[pol, freq_channel] = interpF.interp2d_fourier(
                     x, y, self.freq_dependent_timing[:, freq_channel, pol],
