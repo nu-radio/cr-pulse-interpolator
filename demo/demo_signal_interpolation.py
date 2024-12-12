@@ -70,7 +70,12 @@ for index in test_indices:
     (CC_zeroshift, CC_optimized_timeshift, delta_t, energy_rel_diff) = demo_helper.get_crosscorrelation(orig_pulse, interpolated_pulse)
     print('Normalized cross correlation (CC) = %1.4f, time mismatch = %1.3f ns' % (CC_zeroshift, delta_t))
 
-    demo_helper.plot_pulse_and_spectrum(orig_pulse, interpolated_pulse, this_x, this_y, this_cutoff_freq, pol)
+    interpolated_time_axis = np.arange(len(interpolated_pulse)) * signal_interpolator.sampling_period + timings
+    demo_helper.plot_pulse_and_spectrum(
+        test_time_axis[index], orig_pulse,
+        interpolated_time_axis, interpolated_pulse,
+        this_x, this_y, this_cutoff_freq, pol
+    )
 
 """
 Evaluate accuracy of arrival (start) time per antenna
