@@ -457,7 +457,7 @@ class interp2d_signal:
                  allow_extrapolation=True, ignore_cutoff_freq_in_timing=False, verbose=None, log_level=logging.WARNING):
 
         self.logger = logging.getLogger("cr_pulse_interpolator.interp2d_signal")
-        self.setLevel(log_level)
+        self.logger.setLevel(log_level)
 
         if verbose is not None:
             self.logger.warning("The 'verbose' argument is deprecated and will be removed in a future release. "
