@@ -1,12 +1,13 @@
 # Module for Fourier interpolation of pulsed signals along simulated radio footprints of cosmic-ray air showers
 # Author: A. Corstanje (a.corstanje@astro.ru.nl), 2023
 #
-# See article: A. Corstanje et al 2023 JINST 18 P09005, doi 10.1088/1748-0221/18/09/P09005, arXiv 2306.13514, 
+# See article: A. Corstanje et al 2023 JINST 18 P09005, doi 10.1088/1748-0221/18/09/P09005, arXiv 2306.13514,
 # Please cite this when using code and/or methods in your analysis
 
 import numpy as np
 from scipy.signal import hilbert, resample
 import cr_pulse_interpolator.interpolation_fourier as interpF
+import logging
 
 
 class interp2d_signal:
@@ -50,7 +51,9 @@ class interp2d_signal:
     ignore_cutoff_freq_in_timing : bool, default=False
         can be set to True when experimenting with the "timing" method without its stopping criterion.
     verbose : bool, default=False
-        set to True for more info while initializing
+        set to True for more info while initializing (Deprecated, use log_level instead)
+    log_level : logging.LOG_LEVEL, default=logging.WARNING
+        Possible values are DEBUG, INFO, WARNING, NOTSET
     """
 
     def get_spectra(self, signals):
@@ -65,14 +68,12 @@ class interp2d_signal:
         """
         Nsamples = signals.shape[1]
 
-        if self.verbose:
-            print('Doing FFTs...', end=' ')
+        self.logger.debug('Doing FFTs...', end=' ')
         all_antennas_spectrum = np.fft.rfft(signals, axis=1)
         abs_spectrum = np.abs(all_antennas_spectrum)
         phasespectrum = np.angle(all_antennas_spectrum)
         unwrapped_phases = np.unwrap(phasespectrum, axis=1, discont=0.7 * np.pi)
-        if self.verbose:
-            print('done.')
+        self.logger.debug('done.')
 
         freqs = np.fft.rfftfreq(Nsamples, d=self.sampling_period)
         freqs /= 1.0e6  # in MHz
@@ -106,8 +107,7 @@ class interp2d_signal:
         """
         (Nant, Nsamples, Npols) = signals.shape
 
-        if self.verbose:
-            print('Bandpass filtering %d to %d MHz' % (int(lowfreq), int(highfreq)))
+        self.logger.debug('Bandpass filtering %d to %d MHz' % (int(lowfreq), int(highfreq)))
         spectrum = np.fft.rfft(signals, axis=1)
         freqs = np.fft.rfftfreq(Nsamples, d=self.sampling_period)
         freqs /= 1.0e6  # in MHz
@@ -119,12 +119,10 @@ class interp2d_signal:
         # Get strongest polarization
         power_per_pol = np.sum(np.sum(filtered_signals ** 2, axis=1), axis=0)
         strongest_pol = np.argmax(power_per_pol)
-        if self.verbose:
-            print('Strongest polarization is %d' % strongest_pol)
+        self.logger.debug('Strongest polarization is %d' % strongest_pol)
 
         timestep = self.sampling_period  # in s
-        if self.verbose:
-            print('Upsampling by a factor %d' % upsample_factor)
+        self.logger.debug('Upsampling by a factor %d' % upsample_factor)
         signals_upsampled = resample(filtered_signals, upsample_factor * Nsamples, axis=1)
 
         nof_samples = signals_upsampled.shape[1]
@@ -133,8 +131,7 @@ class interp2d_signal:
         )  # Put in the middle of the block, avoiding negative values in timing
 
         if do_hilbert_envelope:
-            if self.verbose:
-                print('Hilbert envelope')
+            self.logger.debug('Hilbert envelope')
             hilbert_envelope = np.abs(hilbert(signals_upsampled, axis=1))
 
             if sum_over_pol:
@@ -148,8 +145,7 @@ class interp2d_signal:
             pulse_timings_per_pol = (np.argmax(signals_upsampled, axis=1) - nof_samples // 2) * (
                         timestep / upsample_factor)
 
-        if self.verbose:
-            print('Timings done')
+        self.logger.debug('Timings done')
 
         if do_hilbert_envelope and sum_over_pol:
             pulse_timings_per_pol = np.zeros((Nant, Npols))
@@ -311,8 +307,7 @@ class interp2d_signal:
         cutoff_freq = np.zeros((Nants, Npols))
 
         for i, freq_index in enumerate(freq_indices):
-            if self.verbose:
-                print('%d / %d' % (i, len(freq_indices)))
+            self.logger.debug('%d / %d' % (i, len(freq_indices)))
             this_freq = self.freqs[freq_index]
             coherency = self.degree_of_coherency(low_freq=this_freq, high_freq=this_freq + bandwidth)
             coherency_vs_freq[:, i, :] = coherency
@@ -375,8 +370,7 @@ class interp2d_signal:
                 if ((band_high - band_low) < bandwidth) and (band_low + bandwidth < band_high):
                     band_high = band_low + bandwidth
                 # check bandwidth
-                if self.verbose:
-                    print('Bandwidth %3.1f MHz, from %3.1f to %3.1f MHz' % (band_high - band_low, band_low, band_high))
+                self.logger.debug('Bandwidth %3.1f MHz, from %3.1f to %3.1f MHz' % (band_high - band_low, band_low, band_high))
 
                 this_timing = self.hilbert_envelope_timing(signals, lowfreq=band_low, highfreq=band_high,
                                                            upsample_factor=upsample_factor, do_hilbert_envelope=False)
@@ -460,24 +454,28 @@ class interp2d_signal:
     def __init__(self, x, y, signals, signals_start_times=None,
                  lowfreq=30.0, highfreq=500.0, sampling_period=0.1e-9, phase_method="phasor",
                  radial_method='cubic', upsample_factor=5, coherency_cutoff_threshold=0.9,
-                 allow_extrapolation=True, ignore_cutoff_freq_in_timing=False, verbose=False):
+                 allow_extrapolation=True, ignore_cutoff_freq_in_timing=False, verbose=None, log_level=logging.WARNING):
+
+        self.logger = logging.getLogger("cr_pulse_interpolator.interp2d_signal")
+        self.setLevel(log_level)
+
+        if verbose is not None:
+            self.logger.warning("The 'verbose' argument is deprecated and will be removed in a future release. "
+                                "Please use the 'log_level' argument instead.")
 
         self.nofcalls = 0
-        self.verbose = verbose
         self.method = phase_method
         self.pos_x = x
         self.pos_y = y
         (Nants, Nsamples, Npols) = signals.shape  # hard assumption, 3D...
         self.trace_length = Nsamples
         self.sampling_period = sampling_period
-        if self.verbose:
-            print('Setting sampling period to %1.1e seconds' % self.sampling_period)
+        self.logger.info('Setting sampling period to %1.1e seconds' % self.sampling_period)
 
         # Get the abs-amplitude and phase spectra from the time traces
         (self.freqs, all_antennas_spectrum, self.abs_spectrum, self.phasespectrum, self.unwrapped_phases) = self.get_spectra(signals)
 
-        if self.verbose:
-            print('Doing timings using hilbert envelope...')
+        self.logger.info('Doing timings using hilbert envelope...')
 
         # Get pulse timings using Hilbert envelope
         self.pulse_timings = self.hilbert_envelope_timing(signals, lowfreq=30.0, highfreq=80.0,
@@ -496,8 +494,7 @@ class interp2d_signal:
         )  # for testing / demo purposes
 
         # Get degree of coherency and reliable high-cutoff frequency
-        if self.verbose:
-            print('Getting coherency and freq cutoff')
+        self.logger.debug('Getting coherency and freq cutoff')
 
         self.coherency_vs_freq, self.cutoff_freq = self.get_coherency_vs_frequency(
             low_freq=lowfreq,
@@ -506,8 +503,7 @@ class interp2d_signal:
         )
 
         if self.method == "timing":
-            if verbose:
-                print('Doing freq dependent timing...')
+            self.logger.debug('Doing freq dependent timing...')
 
             # Get arrival times in a sliding frequency window
             self.freq_dependent_timing = self.get_freq_dependent_timing_correction(
@@ -516,8 +512,7 @@ class interp2d_signal:
                 ignore_cutoff_freq_in_timing=ignore_cutoff_freq_in_timing
             )
 
-            if verbose:
-                print('Done freq dependent timing')
+            self.logger.debug('Done freq dependent timing')
         else:
             self.freq_dependent_timing = np.zeros(self.phasespectrum_corrected.shape)
 
@@ -556,8 +551,7 @@ class interp2d_signal:
 
         self.interpolators_cutoff_freq = np.empty(Npols, dtype=object)
 
-        if verbose:
-            print('Creating %d interpolators total' % (3 * Npols * nof_freq_channels + 3 * Npols), end=' ')
+        self.logger.debug('Creating %d interpolators total' % (3 * Npols * nof_freq_channels + 3 * Npols), end=' ')
 
         # Create and initialize the interpolators for all quantities
         for freq_channel in range(nof_freq_channels):
@@ -590,8 +584,7 @@ class interp2d_signal:
         else:
             self.interpolators_arrival_times = None
 
-        if self.verbose:
-            print('Done.')
+        self.logger.debug('Done.')
 
     def __call__(self, x, y,
                  lowfreq=30.0, highfreq=500.0, filter_up_to_cutoff=False,
@@ -625,8 +618,8 @@ class interp2d_signal:
         full_output : bool, default=False
             Put this to True to retrieve arrival time and spectra, next to the signal traces.
         """
-        if (self.nofcalls == 0) and self.verbose:
-            print('Method: %s' % self.method)
+        if (self.nofcalls == 0):
+            self.logger.debug('Method: %s' % self.method)
         self.nofcalls += 1
 
         Nfreqs = len(self.interpolators_abs_spectrum[0])
@@ -644,13 +637,13 @@ class interp2d_signal:
 
         if self.method == 'timing':
             index_nearest = self.nearest_antenna_index(x, y)
-            print('pos x = %3.2f, y = %3.2f: nearest antenna at x = %3.2f, y = %3.2f m' % (
+            self.logger.debug('pos x = %3.2f, y = %3.2f: nearest antenna at x = %3.2f, y = %3.2f m' % (
                 x, y, self.pos_x[index_nearest], self.pos_y[index_nearest])
             )
 
             phasespectrum = np.copy(self.phasespectrum_corrected[index_nearest])  # COPY !!!
             """
-            Do nearest-neighbor interpolation on remaining ('corrected') phases, which should be near zero, 
+            Do nearest-neighbor interpolation on remaining ('corrected') phases, which should be near zero,
             but do full interpolation on amplitude spectrum
             """
             for freq_channel in range(Nfreqs):
@@ -687,8 +680,7 @@ class interp2d_signal:
         if self.interpolators_arrival_times is not None:
             trace_start_time += self.interpolators_arrival_times(x, y)
         else:
-            # This should be a logging warning statement
-            print('Trace arrival times were not set during init, only relative timings are returned!')
+            self.logger.warning('Trace arrival times were not set during init, only relative timings are returned!')
         if pulse_centered:
             # We account for the time shift here, because the later loop is over all polarisations and
             # then this operation would be applied multiple times
@@ -698,7 +690,7 @@ class interp2d_signal:
             # The interpolated trace start times were from before the timings are taken out from the phase
             # So it case we do not put them back in, we need to adjust the start times
             trace_start_time -= const_time_offset
-            print('Relative timing between polarisations is not taken into account!')
+            self.logger.warning('Relative timing between polarisations is not taken into account!')
             # TODO: could make trace_start_time array of shape (Npol) and adjust each pol for timings?
 
         # Apply the 30-80 MHz arrival times and phase constants, each interpolated to (x, y) first
@@ -724,14 +716,14 @@ class interp2d_signal:
         # Wrap into (-pi, pi) where needed, to tidy up
         phasespectrum = self.phase_wrap(phasespectrum)
         """
-        Set frequency channels with negative abs-amplitude to 0. This can arise sometimes when 
+        Set frequency channels with negative abs-amplitude to 0. This can arise sometimes when
         Fourier-interpolating abs-amplitudes around a circle. Throw warning when this is needed.
         """
         indices_negative = np.where(abs_spectrum < 0)
         nof_negative = len(indices_negative[0])
 
         if nof_negative > 0:
-            print('warning: negative values in abs_spectrum found: %d times. Setting to zero.' % nof_negative)
+            self.logger.debug('warning: negative values in abs_spectrum for (%.2f, %.2f) found: %d times. Setting to zero.' % (x, y, nof_negative))
             abs_spectrum[indices_negative] = 0.0
         """
         Filter to bandwidth up to local cutoff frequency if desired, otherwise up to high frequency limit
