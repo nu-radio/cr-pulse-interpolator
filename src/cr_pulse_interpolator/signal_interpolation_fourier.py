@@ -681,11 +681,13 @@ class interp2d_signal:
             trace_start_time += self.interpolators_arrival_times(x, y)
         else:
             self.logger.warning('Trace arrival times were not set during init, only relative timings are returned!')
+
         if pulse_centered:
             # We account for the time shift here, because the later loop is over all polarisations and
             # then this operation would be applied multiple times
             time_delta = self.trace_length * 0.5 * self.sampling_period
             trace_start_time -= time_delta
+
         if not account_for_timing:
             # The interpolated trace start times were from before the timings are taken out from the phase
             # So it case we do not put them back in, we need to adjust the start times
@@ -703,6 +705,7 @@ class interp2d_signal:
                 time_delta = self.trace_length * 0.5 * self.sampling_period
                 phase_shifts = -1.0e6 * freqs * 2 * np.pi * time_delta
                 phasespectrum[:, pol] += phase_shifts
+
             if account_for_timing:
                 phase_shifts = -1.0e6 * freqs * 2 * np.pi * timings[pol]
                 phasespectrum[:, pol] += phase_shifts
@@ -723,8 +726,10 @@ class interp2d_signal:
         nof_negative = len(indices_negative[0])
 
         if nof_negative > 0:
-            self.logger.debug('warning: negative values in abs_spectrum for (%.2f, %.2f) found: %d times. Setting to zero.' % (x, y, nof_negative))
+            self.logger.debug(('warning: negative values in abs_spectrum for (%.2f, %.2f) '
+                               'found: %d times. Setting to zero.') % (x, y, nof_negative))
             abs_spectrum[indices_negative] = 0.0
+
         """
         Filter to bandwidth up to local cutoff frequency if desired, otherwise up to high frequency limit
         """
