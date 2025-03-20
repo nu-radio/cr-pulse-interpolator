@@ -1,6 +1,6 @@
 [project]
 name = "cr_pulse_interpolator"
-version = "1.0.1"
+version = "1.1.1"
 authors = [
   { name="Arthur Corstanje", email="a.corstanje@astro.ru.nl" },
 ]
