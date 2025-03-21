@@ -10,5 +10,7 @@
 *venv*/
 
 # Project settings
-
 .idea/
+
+# Python cache
+__pycache__/
