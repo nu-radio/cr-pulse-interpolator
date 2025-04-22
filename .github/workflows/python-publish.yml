@@ -45,7 +45,7 @@ jobs:
       - release-build
     environment:
       name: pypi
-      url: https://pypi.org/p/<your-pypi-project-name>
+      url: https://pypi.org/p/cr-pulse-interpolator
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
