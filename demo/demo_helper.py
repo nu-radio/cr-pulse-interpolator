@@ -1,6 +1,7 @@
 # Separate module for cross-correlating and making a demo plot
 # Author: A. Corstanje, (a.corstanje@astro.ru.nl), 2023
 
+import os
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
@@ -76,7 +77,7 @@ def get_crosscorrelation(test_signal, orig_signal, upsampling_factor=10):
 
 
 
-def plot_pulse_and_spectrum(orig_time_axis, orig_pulse, interpolated_time_axis, interpolated_pulse, x, y, cutoff_freq, pol):
+def plot_pulse_and_spectrum(orig_time_axis, orig_pulse, interpolated_time_axis, interpolated_pulse, x, y, cutoff_freq, pol, fig_path=None):
     """
     Plots an interpolated pulse together with a 'true' simulated pulse
 
@@ -93,6 +94,8 @@ def plot_pulse_and_spectrum(orig_time_axis, orig_pulse, interpolated_time_axis, 
     y : idem for y
     cutoff_freq : value of estimated cutoff frequency, for annotation only
     pol : polarization number
+    fig_path : str or None, default=None
+        If not None, path to save the figure; if None, the figure is shown interactively
     """
     radius = np.sqrt(x**2 + y**2)
     freqs = get_freq_axis(orig_pulse)
@@ -125,9 +128,9 @@ def plot_pulse_and_spectrum(orig_time_axis, orig_pulse, interpolated_time_axis, 
     interp_pulse_powerspec = np.abs(np.fft.rfft(interpolated_pulse))**2
     ax2.plot(freqs, orig_pulse_powerspec, label='Orig pulse')
     ax2.plot(freqs, interp_pulse_powerspec, label='Interpolated pulse')
-    ax2.text(0.98, 0.40, 'Position x = %3.1f, y = %3.1f, r = %3.2f m, pol = %d' % (x, y, radius, pol), transform=plt.gca().transAxes, ha='right') #, va='right')
-    ax2.text(0.98, 0.30, 'CC = %1.5f, CC_max = %1.5f' % (CC_zeroshift, CC_optimized_timeshift), transform=plt.gca().transAxes, ha='right')
-    ax2.text(0.98, 0.20, 'delta_t = %1.2f ns, cutoff freq = %3.1f MHz' % (delta_t, cutoff_freq), transform=plt.gca().transAxes, ha='right')
+    ax2.text(0.98, 0.40, 'Position x = %3.1f, y = %3.1f, r = %3.2f m, pol = %d' % (x, y, radius, pol), transform=ax2.transAxes, ha='right')
+    ax2.text(0.98, 0.30, 'CC = %1.5f, CC_max = %1.5f' % (CC_zeroshift, CC_optimized_timeshift), transform=ax2.transAxes, ha='right')
+    ax2.text(0.98, 0.20, 'delta_t = %1.2f ns, cutoff freq = %3.1f MHz' % (delta_t, cutoff_freq), transform=ax2.transAxes, ha='right')
 
     #plt.yscale('log')
     ax2.grid()
@@ -138,6 +141,8 @@ def plot_pulse_and_spectrum(orig_time_axis, orig_pulse, interpolated_time_axis, 
     ax2.legend(loc='best')
 
     plt.show()
+    if fig_path is not None:
+        plt.savefig(os.path.join(fig_path, 'interpolation_demo_x%3.1f_y%3.1f_pol%d.png' % (x, y, pol)), dpi=300, bbox_inches='tight')
 
 
 def read_data_hdf5(filename):

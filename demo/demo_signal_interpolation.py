@@ -1,11 +1,12 @@
 # Demo script of Fourier interpolation of pulse signals along simulated CR radio footprints
 # Author: A. Corstanje (a.corstanje@astro.ru.nl), 2023
 
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 # plt.ion()
 
-import cr_pulse_interpolator.signal_interpolation_fourier as sigF 
+import cr_pulse_interpolator.signal_interpolation_fourier as sigF
 
 import demo_helper
 
@@ -17,6 +18,9 @@ antenna traces in shape (Nant, Nsamples, Npol), i.e., in this example (208+250, 
 """
 
 demo_filename = 'demo_shower.h5'
+fig_path = os.path.join(os.path.dirname(__file__), 'demo_images_signal')
+if not os.path.exists(fig_path):
+    os.makedirs(fig_path)
 (zenith, azimuth, xmax, footprint_pos_x, footprint_pos_y, test_pos_x, test_pos_y, footprint_antenna_data, test_antenna_data, footprint_time_axis, test_time_axis) = demo_helper.read_data_hdf5(demo_filename)
 
 plt.figure()
@@ -25,6 +29,7 @@ plt.scatter(test_pos_x, test_pos_y, c='r', marker='x')
 plt.gca().set_aspect('equal')
 plt.xlabel('Meters vxB')
 plt.ylabel('Meters vx(vxB)')
+plt.savefig(os.path.join(fig_path, 'antenna_positions.png'), dpi=300, bbox_inches='tight')
 
 nof_test_positions = test_pos_x.shape[0] # the number of test antennas, here 250
 azimuth_deg = (azimuth % (2*np.pi)) * 180.0/np.pi
@@ -74,7 +79,8 @@ for index in test_indices:
     demo_helper.plot_pulse_and_spectrum(
         test_time_axis[index], orig_pulse,
         interpolated_time_axis, interpolated_pulse,
-        this_x, this_y, this_cutoff_freq, pol
+        this_x, this_y, this_cutoff_freq, pol,
+        fig_path=fig_path
     )
 
 """
@@ -107,6 +113,7 @@ plt.figure()
 plt.scatter(core_distances, time_mismatches)
 plt.xlabel('Core distance [ m ]')
 plt.ylabel('Start time mismatch [ ns ]')
+plt.savefig(os.path.join(fig_path, 'timing_mismatch_vs_distance.png'), dpi=300, bbox_inches='tight')
 
 
 """
@@ -148,4 +155,5 @@ plt.xlabel('Core distance [ m ]')
 plt.ylabel('Normalized CC')
 plt.grid()
 plt.legend(loc='best')
-plt.show()
+# plt.show()
+plt.savefig(os.path.join(fig_path, 'CC_vs_distance.png'), dpi=300, bbox_inches='tight')
